@@ -1,0 +1,22 @@
+{
+	"name": "matchmaker",
+	"version": "1.0.0",
+	"description": "",
+	"author": "",
+	"main": "index.js",
+	"scripts": {
+		"start": "node scripts/start.js",
+		"prepare": "node scripts/prepare.js",
+		"lint": "eslint ./src/"
+	},
+	"devDependencies": {
+		"eslint": "^8.17.0",
+		"eslint-config-prettier": "^8.5.0",
+		"husky": "^8.0.1",
+		"import-sort-style-module": "^6.0.0",
+		"prettier": "^2.6.2",
+		"prettier-plugin-import-sort": "^0.0.7"
+	},
+	"type": "module",
+	"license": "ISC"
+}
