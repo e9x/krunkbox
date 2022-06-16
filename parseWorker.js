@@ -19,7 +19,7 @@ export async function parse(gameScript) {
 		gameVars,
 		Buffer.from(
 			JSON.stringify({
-				ahk,
+				ahk: parseInt(ahk),
 				build,
 			})
 		)
