@@ -17,6 +17,22 @@
 		"prettier": "^2.6.2",
 		"prettier-plugin-import-sort": "^0.0.7"
 	},
+	"lint-staged": {
+		"*.{mjs, js, ts, json}": "prettier --write"
+	},
+	"importSort": {
+		".mjs, .js, .jsx, .ts, .tsx": {
+			"style": "module"
+		}
+	},
 	"type": "module",
-	"license": "ISC"
+	"license": "ISC",
+	"dependencies": {
+		"@fastify/static": "^6.4.0",
+		"fastify": "^4.0.3",
+		"md5": "^2.3.0",
+		"node-fetch": "^3.2.6",
+		"piscina": "^3.2.0",
+		"terser": "^5.14.1"
+	}
 }

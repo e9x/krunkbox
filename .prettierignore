@@ -1,6 +1,2 @@
-/node_modules
-/build/
-/public/ruffle/
-/public/stomp/
-/public/uv/
-/uv/
+node_modules
+bin
