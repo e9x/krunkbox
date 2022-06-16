@@ -1,5 +1,4 @@
 import { unlink } from 'fs/promises';
-import { Worker } from 'worker_threads';
 
 import fastifyStatic from '@fastify/static';
 import fastify from 'fastify';
@@ -10,10 +9,12 @@ import {
 	contextWorker,
 	gameCore,
 	gameMinified,
-	minifyWorker,
+	parseWorker,
 } from '../config/paths.js';
 import updateBin from '../updateBin.js';
 import test from './test.js';
+
+const parse = new Piscina({ maxThreads: 1, filename: parseWorker });
 
 /**
  * @type {Piscina|undefined}
@@ -39,8 +40,8 @@ async function updateContext() {
 				}
 			}
 
-			new Worker(minifyWorker, {
-				workerData: await context.run(undefined, { name: 'game' }),
+			await parse.run(await context.run(undefined, { name: 'game' }), {
+				name: 'parse',
 			});
 		}
 
@@ -69,9 +70,9 @@ server.route({
 
 server.route({
 	method: 'GET',
-	url: '/ahk',
+	url: '/vars',
 	handler(_request, reply) {
-		reply.sendFile('gameAhk.json');
+		reply.sendFile('gameVars.json');
 	},
 });
 
