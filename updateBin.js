@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { access, readFile, writeFile } from 'node:fs/promises';
 
 import md5 from 'md5';
 import fetch from 'node-fetch';
@@ -34,6 +34,16 @@ export default async function updateBin() {
 		const response = await fetch(url);
 		const body = await response.arrayBuffer();
 		const checksum = md5(new Uint8Array(body));
+
+		try {
+			await access(file);
+		} catch (error) {
+			if (error.code !== 'ENOENT') {
+				throw error;
+			}
+
+			delete checksums[file];
+		}
 
 		if (checksum === checksums[file]) {
 			continue;

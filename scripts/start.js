@@ -1,4 +1,4 @@
-import { unlink } from 'fs/promises';
+import { access, unlink } from 'fs/promises';
 
 import fastifyStatic from '@fastify/static';
 import fastify from 'fastify';
@@ -9,6 +9,7 @@ import {
 	contextWorker,
 	gameCore,
 	gameMinified,
+	gameVars,
 	parseWorker,
 } from '../config/paths.js';
 import updateBin from '../updateBin.js';
@@ -20,6 +21,12 @@ const parse = new Piscina({ maxThreads: 1, filename: parseWorker });
  * @type {Piscina|undefined}
  */
 let context;
+
+async function parseGame() {
+	await parse.run(await context.run(undefined, { name: 'game' }), {
+		name: 'parse',
+	});
+}
 
 async function updateContext() {
 	const updated = await updateBin();
@@ -40,9 +47,23 @@ async function updateContext() {
 				}
 			}
 
-			await parse.run(await context.run(undefined, { name: 'game' }), {
-				name: 'parse',
-			});
+			await parseGame();
+		} else {
+			try {
+				await access(gameVars);
+			} catch (error) {
+				if (error.code !== 'ENOENT') {
+					throw error;
+				}
+
+				await parseGame();
+			}
+		}
+
+		if (updated) {
+			console.log('Updated');
+		} else {
+			console.log('Up-to-date');
 		}
 
 		test(context);
