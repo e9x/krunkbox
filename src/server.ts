@@ -1,29 +1,39 @@
-import { access, unlink } from 'fs/promises';
-
-import fastifyStatic from '@fastify/static';
-import fastify from 'fastify';
-import Piscina from 'piscina';
-
-import {
-	bin,
-	contextWorker,
-	gameCore,
-	gameMinified,
-	gameVars,
-	parseWorker,
-} from '../config/paths.js';
-import updateBin from '../updateBin.js';
+import type { Token, HashedData, ClientKey } from './env.js';
 import test from './test.js';
+import updateBin from './updateBin.js';
+import fastifyCors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
+import { expand } from 'dotenv-expand';
+import { config } from 'dotenv-flow';
+import fastify from 'fastify';
+import { access, unlink } from 'fs/promises';
+import Piscina from 'piscina';
+import { fileURLToPath } from 'url';
 
-const parse = new Piscina({ maxThreads: 1, filename: parseWorker });
+expand(config());
 
-/**
- * @type {Piscina|undefined}
- */
-let context;
+export interface ContextWorker extends Piscina {
+	run(task: undefined, runOptions: { name: 'game' }): Promise<string>;
+	run(task: Token, runOptions: { name: 'hashToken' }): Promise<HashedData>;
+	run(
+		task: undefined,
+		runOptions: { name: 'getClientKey' }
+	): Promise<ClientKey>;
+}
+
+export interface ParseWorker extends Piscina {
+	run(task: string, runOptions: { name: 'parse' }): Promise<void>;
+}
+
+const parse: ParseWorker = new Piscina({
+	maxThreads: 1,
+	filename: fileURLToPath(new URL('./parseWorker.js', import.meta.url)),
+});
+
+let context: ContextWorker | undefined;
 
 async function parseGame() {
-	await parse.run(await context.run(undefined, { name: 'game' }), {
+	await parse.run(await context!.run(undefined, { name: 'game' }), {
 		name: 'parse',
 	});
 }
@@ -32,29 +42,29 @@ async function updateContext() {
 	const updated = await updateBin();
 
 	if (updated || !context) {
-		if (context) {
-			context.terminate();
-		}
+		if (context) context.destroy();
 
-		context = new Piscina({ filename: contextWorker });
+		context = new Piscina({
+			filename: fileURLToPath(new URL('./contextWorker.js', import.meta.url)),
+		});
 
-		if (updated && updated[gameCore]) {
+		if (updated && updated['core dat']) {
 			try {
-				await unlink(gameMinified);
+				await unlink(
+					fileURLToPath(new URL('../bin/game.min.js', import.meta.url))
+				);
 			} catch (error) {
-				if (error.code !== 'ENOENT') {
-					throw error;
-				}
+				if ((error as { code?: string })?.code !== 'ENOENT') throw error;
 			}
 
 			await parseGame();
 		} else {
 			try {
-				await access(gameVars);
+				await access(
+					fileURLToPath(new URL('../bin/gameVars.json', import.meta.url))
+				);
 			} catch (error) {
-				if (error.code !== 'ENOENT') {
-					throw error;
-				}
+				if ((error as { code?: string })?.code !== 'ENOENT') throw error;
 
 				await parseGame();
 			}
@@ -77,9 +87,11 @@ setInterval(updateContext, 60e3);
 const server = fastify();
 
 server.register(fastifyStatic, {
-	root: bin,
+	root: fileURLToPath(new URL('../bin/', import.meta.url)),
 	serve: false,
 });
+
+server.register(fastifyCors);
 
 server.route({
 	method: 'GET',
@@ -92,7 +104,7 @@ server.route({
 server.route({
 	method: 'GET',
 	url: '/vars',
-	handler(_request, reply) {
+	handler(request, reply) {
 		reply.sendFile('gameVars.json');
 	},
 });
@@ -100,14 +112,14 @@ server.route({
 server.route({
 	method: 'GET',
 	url: '/clientKey',
-	async handler(_request, reply) {
-		reply.send(await context.run(undefined, { name: 'getClientKey' }));
+	async handler(request, reply) {
+		reply.send(await context?.run(undefined, { name: 'getClientKey' }));
 	},
 });
 
 server.route({
 	method: 'POST',
-	url: '/hashData',
+	url: '/hashToken',
 	schema: {
 		body: {
 			type: 'object',
@@ -119,13 +131,19 @@ server.route({
 		},
 	},
 	async handler(request, reply) {
-		reply.send(await context.run(request.body, { name: 'hashData' }));
+		reply.send(
+			await context?.run(request.body as Token, { name: 'hashToken' })
+		);
 	},
 });
 
+let port = parseInt(process.env.PORT || '');
+
+if (isNaN(port)) port = 80;
+
 server.listen(
 	{
-		port: process.env.PORT || 80,
+		port,
 	},
 	(error, url) => {
 		if (error) {

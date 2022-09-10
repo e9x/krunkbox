@@ -1,7 +1,36 @@
-'use strict';
+export interface Token {
+	token: string;
+	cfid: number;
+	sid: number;
+}
+
+export type ClientKey = number[];
+
+export type HashedData = number[];
+
+export interface InitContext {
+	contentWindow: typeof globalThis;
+	gameCoreData: Buffer;
+	performanceNow: () => number;
+	TextDecoder: typeof TextDecoder;
+	Uint8Array: typeof Uint8Array;
+	console: typeof console;
+	enableConsole: boolean;
+	generateToken: (clientKey: string) => Promise<string>;
+	WebAssembly: typeof WebAssembly;
+	resolve: (data: unknown) => void;
+}
+
+declare global {
+	var initData: InitContext | undefined;
+	var resolve: InitContext['resolve'];
+}
 
 {
-	globalThis.window = globalThis;
+	Object.defineProperty(globalThis, 'window', {
+		configurable: false,
+		value: globalThis,
+	});
 
 	const {
 		contentWindow,
@@ -14,19 +43,19 @@
 		generateToken,
 		WebAssembly,
 		resolve,
-	} = window.initData;
+	} = window.initData!;
 
 	delete window.initData;
 
 	if (resolve) {
 		// "return" from the script
-		window.resolve = data => resolve(data);
+		window.resolve = (data: unknown) => resolve(data);
 	}
 
 	window.WebAssembly = WebAssembly;
 
 	if (enableConsole) {
-		window.console = {};
+		const consoleLike: Partial<typeof console> = {};
 
 		for (const key of [
 			'log',
@@ -38,31 +67,43 @@
 			'time',
 			'timeEnd',
 		]) {
-			window.console[key] = (...args) => console[key](...args);
+			interface CrapConsole {
+				[key: string]: (...args: unknown[]) => void;
+			}
+
+			(consoleLike as unknown as CrapConsole)[key] = (...args: unknown[]) =>
+				(console as unknown as CrapConsole)[key](...args);
 		}
+
+		window.console = consoleLike as typeof console;
 	}
 
-	window.requestAnimationFrame = () => {};
+	window.requestAnimationFrame = () => 0;
 
 	window.location = {
 		hostname: 'krunker.io',
-	};
+	} as Location;
 
 	window.XMLHttpRequest = class {
+		readyState?: number;
+		statusText?: string;
+		status?: number;
+		response?: ArrayBuffer;
+		onload?: () => void;
 		setRequestHeader() {}
 		send() {
 			this.readyState = 4;
 			this.statusText = 'OK';
 			this.status = 200;
 			this.response = new window.Uint8Array(gameCoreData).buffer;
-			this.onload();
+			if (this.onload) this.onload();
 		}
 		open() {}
-	};
+	} as unknown as typeof XMLHttpRequest;
 
 	window.WebSocket = class {
 		send() {}
-	};
+	} as unknown as typeof WebSocket;
 
 	window.CanvasRenderingContext2D = class {
 		clearRect() {}
@@ -70,37 +111,37 @@
 		save() {}
 		arcTo() {}
 		fillText() {}
-	};
+	} as unknown as typeof CanvasRenderingContext2D;
 
 	window.HTMLIFrameElement = class {
 		_contentWindow = null;
 		get contentWindow() {
 			return this._contentWindow;
 		}
-	};
+	} as unknown as typeof HTMLIFrameElement;
 
 	window.HTMLCanvasElement = class {
 		context = new window.CanvasRenderingContext2D();
 		getContext() {
 			return this.context;
 		}
-	};
+	} as unknown as typeof HTMLCanvasElement;
 
 	window.HTMLDivElement = class {
 		addEventListener() {}
-	};
+	} as unknown as typeof HTMLDivElement;
 
 	window.document = {
 		body: {
-			appendChild(child) {
+			appendChild(child: { _contentWindow: typeof contentWindow }) {
 				child._contentWindow = contentWindow;
 				return child;
 			},
 			removeChild() {},
 		},
 		write() {},
-		createElement(kind) {
-			let element;
+		createElement(kind: string) {
+			let element: { style?: {} };
 
 			switch (kind) {
 				case 'iframe':
@@ -112,50 +153,57 @@
 				case 'div':
 					element = new window.HTMLDivElement();
 					break;
+				default:
+					throw kind;
 			}
 
 			element.style = {};
 
 			return element;
 		},
-	};
+	} as unknown as typeof document;
 
 	window.performance = {
 		now() {
 			return performanceNow();
 		},
-	};
+	} as unknown as typeof performance;
 
-	window.Headers = function Headers(init) {
+	interface HotHeaders {
+		'Client-Key': number[];
+	}
+
+	window.Headers = function Headers(init: HotHeaders) {
 		return init;
-	};
+	} as unknown as typeof Headers;
 
-	window.fetch = async (url, init = {}) => {
-		if (url.startsWith('/pkg/loader.wasm')) {
-			return;
-		}
+	window.fetch = (async (url: string | URL, init: { headers: HotHeaders }) => {
+		url = url.toString();
 
-		if (url === 'https://matchmaker.krunker.io/generate-token') {
+		if (url.startsWith('/pkg/loader.wasm')) return;
+
+		if (url === 'https://matchmaker.krunker.io/generate-token')
 			return {
 				async json() {
-					return JSON.parse(await generateToken(init.headers['Client-Key']));
+					return JSON.parse(
+						await generateToken(JSON.stringify(init.headers['Client-Key']))
+					);
 				},
 			};
-		}
-	};
+	}) as unknown as typeof fetch;
 
-	window.localStorage = { logs: true };
+	window.localStorage = { logs: true } as unknown as typeof localStorage;
 
 	window.TextDecoder = class {
-		#decoder;
-		constructor(type) {
+		#decoder: TextDecoder;
+		constructor(type: string) {
 			this.#decoder = new TextDecoder(type ? String(type) : undefined);
 		}
-		decode(data) {
+		decode(data: Uint8Array) {
 			// data is only Uint8Array
 			return this.#decoder.decode(new Uint8Array(data));
 		}
-	};
+	} as unknown as typeof TextDecoder;
 
 	Object.defineProperty(Object.prototype, 'Context', {
 		// eslint-disable-next-line no-unused-vars

@@ -1,4 +1,6 @@
-export default async function (context) {
+import { ContextWorker } from './server';
+
+export default async function (context: ContextWorker) {
 	console.time('hash');
 	const hashed = await context.run(
 		{
@@ -6,7 +8,7 @@ export default async function (context) {
 			cfid: 3323532784,
 			sid: 2094532721,
 		},
-		{ name: 'hashData' }
+		{ name: 'hashToken' }
 	);
 	console.timeEnd('hash');
 

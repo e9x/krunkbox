@@ -5,34 +5,31 @@
 	"author": "",
 	"main": "index.js",
 	"scripts": {
-		"start": "node scripts/start.js",
-		"prepare": "node scripts/prepare.js",
-		"lint": "eslint ./src/"
-	},
-	"devDependencies": {
-		"eslint": "^8.17.0",
-		"eslint-config-prettier": "^8.5.0",
-		"husky": "^8.0.1",
-		"import-sort-style-module": "^6.0.0",
-		"prettier": "^2.6.2",
-		"prettier-plugin-import-sort": "^0.0.7"
-	},
-	"lint-staged": {
-		"*.{mjs, js, ts, json}": "prettier --write"
-	},
-	"importSort": {
-		".mjs, .js, .jsx, .ts, .tsx": {
-			"style": "module"
-		}
+		"start": "node dist/server.js",
+		"build": "tsc",
+		"build:watch": "tsc --watch"
 	},
 	"type": "module",
 	"license": "ISC",
 	"dependencies": {
-		"@fastify/static": "^6.4.0",
-		"fastify": "^4.0.3",
+		"@fastify/cors": "^8.1.0",
+		"@fastify/static": "^6.5.0",
+		"dotenv-expand": "^9.0.0",
+		"dotenv-flow": "^3.2.0",
+		"fastify": "^4.5.3",
 		"md5": "^2.3.0",
-		"node-fetch": "^3.2.6",
+		"node-fetch": "^3.2.10",
 		"piscina": "^3.2.0",
-		"terser": "^5.14.1"
+		"terser": "^5.15.0"
+	},
+	"devDependencies": {
+		"@ianvs/prettier-plugin-sort-imports": "^3.4.2",
+		"@types/dotenv-flow": "^3.2.0",
+		"@types/md5": "^2.3.2",
+		"@types/node": "^18.7.16",
+		"eslint": "^8.23.0",
+		"eslint-config-prettier": "^8.5.0",
+		"prettier": "^2.7.1",
+		"typescript": "^4.8.3"
 	}
 }

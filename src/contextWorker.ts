@@ -1,26 +1,40 @@
-import { readFile } from 'node:fs/promises';
-import { performance } from 'node:perf_hooks';
-import { Script, createContext } from 'node:vm';
-
+import { ClientKey, HashedData, InitContext, Token } from './env.js';
+import { readFile } from 'fs/promises';
 import fetch from 'node-fetch';
+import { performance } from 'perf_hooks';
+import { fileURLToPath } from 'url';
+import { Script, createContext } from 'vm';
 
-import { envJs, gameCore, loaderJs, loaderWasm } from './config/paths.js';
+const gameCoreData = (
+	await readFile(fileURLToPath(new URL('../bin/core.dat', import.meta.url)))
+).buffer;
 
-const gameCoreData = (await readFile(gameCore)).buffer;
+const initScriptPath = fileURLToPath(new URL('./env.js', import.meta.url));
 
-const initScript = new Script(await readFile(envJs, 'utf-8'), {
-	filename: envJs,
-});
+const initScript = new Script(
+	(await readFile(initScriptPath, 'utf-8')).replace('export {};', ''),
+	{
+		filename: initScriptPath,
+	}
+);
 
-const loaderScript = new Script(await readFile(loaderJs, 'utf-8'), {
-	filename: loaderJs,
+const loaderScriptPath = fileURLToPath(
+	new URL('../bin/loader.js', import.meta.url)
+);
+
+const loaderScript = new Script(await readFile(loaderScriptPath, 'utf-8'), {
+	filename: loaderScriptPath,
 });
 
 const getThis = new Script('this');
 
 // context provides: WebAssembly, pre-compiled module
 const WebAssemblyContext = {
-	loaderWasmData: (await readFile(loaderWasm)).buffer,
+	loaderWasmData: (
+		await readFile(
+			fileURLToPath(new URL('../bin/loader.wasm', import.meta.url))
+		)
+	).buffer,
 };
 
 createContext(WebAssemblyContext);
@@ -40,27 +54,28 @@ console.time('Compile WASM module');
 await modulePromise;
 console.timeEnd('Compile WASM module');
 
-const baseInit = () => ({
-	WebAssembly,
-	gameCoreData,
-	performanceNow: performance.now,
-	TextDecoder,
-	Uint8Array,
-	console,
-	enableConsole: true,
-	async generateToken(clientKey) {
-		return await (
-			await fetch('https://matchmaker.krunker.io/generate-token', {
-				headers: {
-					'Client-Key': clientKey,
-					'User-Agent':
-						'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0',
-				},
-			})
-		).text();
-	},
-	contentWindow: getThis.runInNewContext(),
-});
+const baseInit = () =>
+	({
+		WebAssembly,
+		gameCoreData,
+		performanceNow: performance.now,
+		TextDecoder,
+		Uint8Array,
+		console,
+		enableConsole: true,
+		async generateToken(clientKey) {
+			return await (
+				await fetch('https://matchmaker.krunker.io/generate-token', {
+					headers: {
+						'Client-Key': clientKey,
+						'User-Agent':
+							'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0',
+					},
+				})
+			).text();
+		},
+		contentWindow: getThis.runInNewContext(),
+	} as InitContext);
 
 /*{
 	const context = {
@@ -87,40 +102,38 @@ const dummyToken = {
 	sid: 0,
 };
 
-export function getClientKey() {
-	return new Promise(resolve => {
+export const getClientKey = () =>
+	new Promise<ClientKey>((resolve) => {
 		const context = {
 			initData: {
 				...baseInit(),
 				enableConsole: false,
-				gameCoreData: new ArrayBuffer(),
+				gameCoreData: new ArrayBuffer(0),
 				async generateToken(clientKey) {
-					resolve(clientKey);
+					resolve(JSON.parse(clientKey));
 					return JSON.stringify(dummyToken);
 				},
-			},
+			} as InitContext,
 		};
 
 		createContext(context);
 		initScript.runInContext(context);
 		loaderScript.runInContext(context);
 	});
-}
 
-// data being {sid,etc, obj}
-export function hashData(data) {
-	return new Promise(resolve => {
+export const hashToken = (token: Token) =>
+	new Promise<HashedData>((resolve) => {
 		const context = {
 			initData: {
 				...baseInit(),
 				enableConsole: false,
-				gameCoreData: new ArrayBuffer(),
+				gameCoreData: new ArrayBuffer(0),
 				resolve,
 				async generateToken() {
-					return JSON.stringify(data);
+					return JSON.stringify(token);
 				},
 				TextDecoder: class extends TextDecoder {
-					decode(buffer) {
+					decode(buffer: BufferSource | undefined) {
 						const decoded = super.decode(buffer);
 
 						if (
@@ -140,10 +153,9 @@ export function hashData(data) {
 		initScript.runInContext(context);
 		loaderScript.runInContext(context);
 	});
-}
 
-export function game() {
-	return new Promise(resolve => {
+export const game = () =>
+	new Promise<string>((resolve) => {
 		const context = {
 			initData: {
 				...baseInit(),
@@ -153,7 +165,7 @@ export function game() {
 					return JSON.stringify(dummyToken);
 				},
 				TextDecoder: class extends TextDecoder {
-					decode(buffer) {
+					decode(buffer: BufferSource | undefined) {
 						const decoded = super.decode(buffer);
 
 						if (
@@ -173,4 +185,3 @@ export function game() {
 		initScript.runInContext(context);
 		loaderScript.runInContext(context);
 	});
-}
