@@ -18,7 +18,7 @@ try {
 			'utf-8'
 		)
 	);
-} catch (error) {
+} catch (err) {
 	checksums = {};
 }
 
@@ -57,8 +57,8 @@ export default async function updateBin() {
 
 		try {
 			await access(res.path);
-		} catch (error) {
-			if ((error as { code?: string })?.code !== 'ENOENT') throw error;
+		} catch (err) {
+			if ((err as { code?: string })?.code !== 'ENOENT') throw err;
 
 			delete checksums[res.alias];
 		}

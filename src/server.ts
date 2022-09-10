@@ -53,8 +53,8 @@ async function updateContext() {
 				await unlink(
 					fileURLToPath(new URL('../bin/game.min.js', import.meta.url))
 				);
-			} catch (error) {
-				if ((error as { code?: string })?.code !== 'ENOENT') throw error;
+			} catch (err) {
+				if ((err as { code?: string })?.code !== 'ENOENT') throw err;
 			}
 
 			await parseGame();
@@ -63,8 +63,8 @@ async function updateContext() {
 				await access(
 					fileURLToPath(new URL('../bin/gameVars.json', import.meta.url))
 				);
-			} catch (error) {
-				if ((error as { code?: string })?.code !== 'ENOENT') throw error;
+			} catch (err) {
+				if ((err as { code?: string })?.code !== 'ENOENT') throw err;
 
 				await parseGame();
 			}
@@ -145,9 +145,9 @@ server.listen(
 	{
 		port,
 	},
-	(error, url) => {
-		if (error) {
-			console.error(error);
+	(err, url) => {
+		if (err) {
+			console.error(err);
 			process.exit();
 		}
 		console.log('Live at', url);
