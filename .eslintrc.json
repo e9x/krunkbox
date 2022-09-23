@@ -9,6 +9,7 @@
 	},
 	"extends": [
 		"eslint:recommended",
+		"plugin:import/errors",
 		"plugin:@typescript-eslint/eslint-recommended",
 		"plugin:@typescript-eslint/recommended"
 	],
@@ -22,23 +23,7 @@
 	"rules": {
 		"indent": "off",
 		"quotes": "off",
-		"no-mixed-spaces-and-tabs": "off",
-		"no-lone-blocks": "off",
-		"eqeqeq": "error",
-		"prefer-const": "error",
-		"no-var": "error",
-		//"import/no-anonymous-default-export": "error",
-		"@typescript-eslint/consistent-type-imports": "error",
-		"@typescript-eslint/no-unused-vars": "error",
-		"@typescript-eslint/no-non-null-assertion": "off",
-		"@typescript-eslint/ban-ts-comment": "off",
-		"@typescript-eslint/adjacent-overload-signatures": "off",
-		"@typescript-eslint/ban-types": "off",
-		"no-constant-condition": [
-			"error",
-			{
-				"checkLoops": false
-			}
-		]
+		"import/no-unresolved": "off",
+		"@typescript-eslint/no-non-null-assertion": "off"
 	}
 }

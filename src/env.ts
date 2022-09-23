@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 export interface Token {
 	token: string;
 	cfid: number;
@@ -22,7 +23,9 @@ export interface InitContext {
 }
 
 declare global {
+	// eslint-disable-next-line no-var
 	var initData: InitContext | undefined;
+	// eslint-disable-next-line no-var
 	var resolve: InitContext['resolve'];
 }
 
@@ -141,7 +144,7 @@ declare global {
 		},
 		write() {},
 		createElement(kind: string) {
-			let element: { style?: {} };
+			let element: { style?: unknown };
 
 			switch (kind) {
 				case 'iframe':
@@ -206,8 +209,8 @@ declare global {
 	} as unknown as typeof TextDecoder;
 
 	Object.defineProperty(Object.prototype, 'Context', {
-		// eslint-disable-next-line no-unused-vars
-		set(_value) {},
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		set(value) {},
 		configurable: false,
 		enumerable: false,
 	});
