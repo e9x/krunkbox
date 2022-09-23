@@ -1,5 +1,6 @@
 import once from '@tootallnate/once';
-import { createWriteStream, WriteStream } from 'fs';
+import type { WriteStream } from 'fs';
+import { createWriteStream } from 'fs';
 import { stat } from 'fs/promises';
 import fetch from 'node-fetch';
 import { fileURLToPath } from 'url';

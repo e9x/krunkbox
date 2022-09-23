@@ -1,4 +1,4 @@
-import { ClientKey, HashedData, InitContext, Token } from './env.js';
+import type { ClientKey, HashedData, InitContext, Token } from './env.js';
 import { readFile } from 'fs/promises';
 import fetch from 'node-fetch';
 import { performance } from 'perf_hooks';

@@ -1,4 +1,4 @@
-import { ContextWorker } from './server.js';
+import type { ContextWorker } from './server.js';
 
 export default async function (context: ContextWorker) {
 	console.time('hash');
