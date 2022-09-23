@@ -82,7 +82,7 @@ async function updateContext() {
 
 updateContext();
 
-setInterval(updateContext, 60e3 * 60);
+setInterval(updateContext, 60e3 * 60 * 6);
 
 const server = fastify();
 
