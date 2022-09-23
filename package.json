@@ -19,7 +19,6 @@
 		"dotenv-expand": "^9.0.0",
 		"dotenv-flow": "^3.2.0",
 		"fastify": "^4.5.3",
-		"md5": "^2.3.0",
 		"node-fetch": "^3.2.10",
 		"piscina": "^3.2.0"
 	},

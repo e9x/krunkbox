@@ -1,29 +1,11 @@
-import md5 from 'md5';
+import once from '@tootallnate/once';
+import { createWriteStream, WriteStream } from 'fs';
+import { stat } from 'fs/promises';
 import fetch from 'node-fetch';
-import { access, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'url';
 
-interface Checksums {
-	'loader js'?: string;
-	'loader wasm'?: string;
-	'core dat'?: string;
-}
-
-let checksums: Checksums;
-
-try {
-	checksums = JSON.parse(
-		await readFile(
-			fileURLToPath(new URL('../bin/checksums.json', import.meta.url)),
-			'utf-8'
-		)
-	);
-} catch (err) {
-	checksums = {};
-}
-
 interface Resource {
-	alias: keyof Checksums;
+	alias: 'loader js' | 'loader wasm' | 'core dat';
 	url: string;
 	path: string;
 }
@@ -45,39 +27,39 @@ const resources: Resource[] = [
 		path: fileURLToPath(new URL('../bin/core.dat', import.meta.url)),
 	},
 ];
+
 export default async function updateBin() {
-	type Updated = Record<keyof Checksums, boolean>;
+	type Updated = Record<Resource['alias'], boolean>;
 	const updated: Partial<Updated> = {};
 	let anyUpdated = false;
 
+	const writeStreams: WriteStream[] = [];
+
 	for (const res of resources) {
 		const response = await fetch(res.url);
-		const body = await response.arrayBuffer();
-		const checksum = md5(new Uint8Array(body));
 
 		try {
-			await access(res.path);
+			const stats = await stat(res.path);
+			const header = response.headers.get('last-modified');
+			if (!header) throw new Error(`Bad last-modified: ${header}`);
+
+			const lastModified = new Date(header);
+
+			if (lastModified.getTime() <= stats.mtimeMs) continue;
 		} catch (err) {
 			if ((err as { code?: string })?.code !== 'ENOENT') throw err;
-
-			delete checksums[res.alias];
 		}
-
-		if (checksum === checksums[res.alias]) continue;
 
 		anyUpdated = true;
 		updated[res.alias] = true;
 
-		checksums[res.alias] = checksum;
+		const writeStream = createWriteStream(res.path);
+		response.body!.pipe(writeStream);
 
-		await writeFile(res.path, Buffer.from(body));
+		writeStreams.push(writeStream);
 	}
 
-	if (updated)
-		await writeFile(
-			fileURLToPath(new URL('../bin/checksums.json', import.meta.url)),
-			JSON.stringify(checksums)
-		);
+	for (const writeStream of writeStreams) await once(writeStream, 'end');
 
 	return anyUpdated && (updated as Updated);
 }
