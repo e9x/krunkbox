@@ -1,5 +1,5 @@
-import { minify } from '@swc/core';
 import { writeFile } from 'fs/promises';
+import { minify } from 'terser';
 import { fileURLToPath } from 'url';
 
 export async function parse(gameScript: string) {
