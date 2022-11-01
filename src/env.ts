@@ -14,7 +14,6 @@ export interface InitContext {
 	coreDataBin: ArrayBuffer[] | false;
 	performanceNow: () => number;
 	TextDecoder: typeof TextDecoder;
-	Uint8Array: typeof Uint8Array;
 	console: typeof console;
 	generateToken: (clientKey: string) => Promise<string>;
 	WebAssembly: typeof WebAssembly;
@@ -39,7 +38,6 @@ declare global {
 		coreDataBin,
 		performanceNow,
 		TextDecoder,
-		Uint8Array,
 		console,
 		generateToken,
 		WebAssembly,
@@ -107,9 +105,9 @@ declare global {
 				if (isNaN(splitID))
 					throw new Error(`Unrecognized XMLHttpRequest resource: ${this.#url}`);
 
-				this.response = new window.Uint8Array(coreDataBin[splitID]).buffer;
+				this.response = new Uint8Array(coreDataBin[splitID]).buffer;
 			} else {
-				this.response = new window.Uint8Array();
+				this.response = new Uint8Array();
 			}
 
 			if (this.onload) this.onload();
@@ -218,8 +216,7 @@ declare global {
 			this.#decoder = new TextDecoder(type ? String(type) : undefined);
 		}
 		decode(data: Uint8Array) {
-			// data is only Uint8Array
-			return this.#decoder.decode(new Uint8Array(data));
+			return this.#decoder.decode(data);
 		}
 	} as unknown as typeof TextDecoder;
 

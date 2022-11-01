@@ -64,7 +64,6 @@ const baseInit = () => ({
 	coreDataBin,
 	performanceNow: performance.now,
 	TextDecoder,
-	Uint8Array,
 	console,
 	async generateToken(clientKey: string) {
 		return await (
