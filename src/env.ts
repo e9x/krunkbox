@@ -9,23 +9,27 @@ export type ClientKey = number[];
 
 export type HashedData = number[];
 
-export interface InitContext {
+/**
+ * Init object cannot contain any void fields to prevent Object property hooks...
+ */
+export interface InitData {
 	contentWindow: typeof globalThis;
 	coreDataBin: ArrayBuffer[] | false;
 	performanceNow: () => number;
 	TextDecoder: typeof TextDecoder;
-	console: typeof console;
+	console: typeof console | null;
 	generateToken: (clientKey: string) => Promise<string>;
 	WebAssembly: typeof WebAssembly;
-	resolve?: (data: string) => void;
+	resolve: ((data: string) => void) | null;
 }
 
 declare global {
 	// eslint-disable-next-line no-var
-	var initData: InitContext | undefined;
-	// eslint-disable-next-line no-var
-	var resolve: (data: string) => void;
+	var initData: Readonly<InitData> | undefined;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, no-var
+declare var window: any;
 
 {
 	Object.defineProperty(globalThis, 'window', {
@@ -33,59 +37,55 @@ declare global {
 		value: globalThis,
 	});
 
-	const {
-		contentWindow,
-		coreDataBin,
-		performanceNow,
-		TextDecoder,
-		console,
-		generateToken,
-		WebAssembly,
-		resolve,
-	} = window.initData!;
+	const getInit = () => {
+		const { initData } = globalThis;
+		if (!initData) throw new TypeError('Bad initData');
+		delete window.initData;
+		return initData;
+	};
 
-	delete window.initData;
+	const initData = getInit();
 
-	if (resolve) {
-		// "return" from the script
-		window.resolve = (data: string) => {
-			resolve(data);
+	// return some data from the script
+	if (initData.resolve) {
+		const resolve = initData.resolve;
+		window.resolve = (data: string) => resolve(data);
+	}
+
+	const WebAssembly = initData.WebAssembly;
+
+	const console: Partial<typeof initData['console']> = {};
+
+	for (const key of [
+		'log',
+		'warn',
+		'error',
+		'trace',
+		'info',
+		'debug',
+		'time',
+		'timeEnd',
+	]) {
+		interface CrapConsole {
+			[key: string]: (...args: unknown[]) => void;
+		}
+
+		(console as unknown as CrapConsole)[key] = (...args: unknown[]) => {
+			if (initData.console) {
+				(initData.console as unknown as CrapConsole)[key](...args);
+			}
 		};
 	}
 
-	window.WebAssembly = WebAssembly;
+	const requestAnimationFrame = function requestAnimationFrame() {
+		return 0;
+	};
 
-	if (console) {
-		const consoleLike: Partial<typeof console> = {};
-
-		for (const key of [
-			'log',
-			'warn',
-			'error',
-			'trace',
-			'info',
-			'debug',
-			'time',
-			'timeEnd',
-		]) {
-			interface CrapConsole {
-				[key: string]: (...args: unknown[]) => void;
-			}
-
-			(consoleLike as unknown as CrapConsole)[key] = (...args: unknown[]) =>
-				(console as unknown as CrapConsole)[key](...args);
-		}
-
-		window.console = consoleLike as typeof console;
-	}
-
-	window.requestAnimationFrame = () => 0;
-
-	window.location = {
+	const location = {
 		hostname: 'krunker.io',
-	} as Location;
+	};
 
-	window.XMLHttpRequest = class {
+	const XMLHttpRequest = class XMLHttpRequest {
 		#url?: string;
 		readyState?: number;
 		statusText?: string;
@@ -97,7 +97,7 @@ declare global {
 			this.readyState = 4;
 			this.statusText = 'OK';
 			this.status = 200;
-			if (coreDataBin) {
+			if (initData.coreDataBin) {
 				const splitID = Number(
 					(this.#url?.match(/core.dat.split-(\d+)\?/) || [])[1]
 				);
@@ -105,7 +105,7 @@ declare global {
 				if (isNaN(splitID))
 					throw new Error(`Unrecognized XMLHttpRequest resource: ${this.#url}`);
 
-				this.response = new Uint8Array(coreDataBin[splitID]).buffer;
+				this.response = new Uint8Array(initData.coreDataBin[splitID]).buffer;
 			} else {
 				this.response = new Uint8Array();
 			}
@@ -115,85 +115,83 @@ declare global {
 		open(method: string, url: string) {
 			this.#url = url;
 		}
-	} as unknown as typeof XMLHttpRequest;
+	};
 
-	window.WebSocket = class {
+	const WebSocket = class WebSocket {
 		send() {}
-	} as unknown as typeof WebSocket;
+	};
 
-	window.CanvasRenderingContext2D = class {
+	const CanvasRenderingContext2D = class CanvasRenderingContext2D {
 		clearRect() {}
 		scale() {}
 		save() {}
 		arcTo() {}
 		fillText() {}
-	} as unknown as typeof CanvasRenderingContext2D;
+	};
 
-	window.HTMLIFrameElement = class {
+	const HTMLElement = class HTMLElement {
+		style = {};
+	};
+
+	const HTMLIFrameElement = class HTMLIFrameElement extends HTMLElement {
 		_contentWindow = null;
 		get contentWindow() {
 			return this._contentWindow;
 		}
-	} as unknown as typeof HTMLIFrameElement;
+	};
 
-	window.HTMLCanvasElement = class {
+	const HTMLCanvasElement = class HTMLCanvasElement extends HTMLElement {
 		context = new window.CanvasRenderingContext2D();
 		getContext() {
 			return this.context;
 		}
-	} as unknown as typeof HTMLCanvasElement;
+	};
 
-	window.HTMLDivElement = class {
+	const HTMLDivElement = class HTMLDivElement extends HTMLElement {
 		addEventListener() {}
-	} as unknown as typeof HTMLDivElement;
+	};
 
-	window.document = {
+	const document = {
 		body: {
-			appendChild(child: { _contentWindow: typeof contentWindow }) {
-				child._contentWindow = contentWindow;
+			appendChild(child: { _contentWindow: InitData['contentWindow'] }) {
+				child._contentWindow = initData.contentWindow;
 				return child;
 			},
 			removeChild() {},
 		},
 		write() {},
-		createElement(kind: string) {
-			let element: { style?: unknown };
-
+		createElement(kind: string): InstanceType<typeof HTMLElement> {
 			switch (kind) {
 				case 'iframe':
-					element = new window.HTMLIFrameElement();
-					break;
+					return new HTMLIFrameElement();
 				case 'canvas':
-					element = new window.HTMLCanvasElement();
-					break;
+					return new HTMLCanvasElement();
 				case 'div':
-					element = new window.HTMLDivElement();
-					break;
+					return new HTMLDivElement();
 				default:
 					throw kind;
 			}
-
-			element.style = {};
-
-			return element;
 		},
-	} as unknown as typeof document;
+	};
 
-	window.performance = {
+	const performance = {
 		now() {
-			return performanceNow();
+			return initData.performanceNow();
 		},
-	} as unknown as typeof performance;
+	};
 
 	interface HotHeaders {
 		'Client-Key': number[];
 	}
 
-	window.Headers = function Headers(init: HotHeaders) {
+	const Headers = function Headers(init: HotHeaders) {
 		return init;
-	} as unknown as typeof Headers;
+	};
 
-	window.fetch = (async (url: string | URL, init: { headers: HotHeaders }) => {
+	const fetch = async function fetch(
+		url: string | URL,
+		init: { headers: HotHeaders }
+	) {
 		url = url.toString();
 
 		if (url.startsWith('/pkg/loader.wasm')) return;
@@ -202,23 +200,42 @@ declare global {
 			return {
 				async json() {
 					return JSON.parse(
-						await generateToken(JSON.stringify(init.headers['Client-Key']))
+						await initData.generateToken(
+							JSON.stringify(init.headers['Client-Key'])
+						)
 					);
 				},
 			};
-	}) as unknown as typeof fetch;
+	};
 
-	window.localStorage = { logs: true } as unknown as typeof localStorage;
+	const localStorage = { logs: true };
 
-	window.TextDecoder = class {
-		#decoder: TextDecoder;
+	const TextDecoder = class TextDecoder {
+		#decoder: InstanceType<InitData['TextDecoder']>;
 		constructor(type: string) {
-			this.#decoder = new TextDecoder(type ? String(type) : undefined);
+			this.#decoder = new initData.TextDecoder(type);
 		}
 		decode(data: Uint8Array) {
 			return this.#decoder.decode(data);
 		}
-	} as unknown as typeof TextDecoder;
+	};
+
+	window.fetch = fetch;
+	window.Headers = Headers;
+	window.WebSocket = WebSocket;
+	window.CanvasRenderingContext2D = CanvasRenderingContext2D;
+	window.location = location;
+	window.document = document;
+	window.performance = performance;
+	window.localStorage = localStorage;
+	window.requestAnimationFrame = requestAnimationFrame;
+	window.HTMLElement = HTMLElement;
+	window.HTMLIFrameElement = HTMLIFrameElement;
+	window.HTMLCanvasElement = HTMLCanvasElement;
+	window.HTMLDivElement = HTMLDivElement;
+	window.XMLHttpRequest = XMLHttpRequest;
+	window.TextDecoder = TextDecoder;
+	window.WebAssembly = WebAssembly;
 
 	Object.defineProperty(Object.prototype, 'Context', {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars

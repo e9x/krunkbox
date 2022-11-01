@@ -18,7 +18,7 @@
 		"dotenv-expand": "^9.0.0",
 		"dotenv-flow": "^3.2.0",
 		"fastify": "^4.5.3",
-		"node-fetch": "^3.2.10",
+		"node-fetch": "^3.2.8",
 		"piscina": "^3.2.0",
 		"terser": "^5.15.0"
 	},

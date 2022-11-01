@@ -1,11 +1,11 @@
-import type { ClientKey, HashedData, Token, InitContext } from './env.js';
+import type { ClientKey, HashedData, Token, InitData } from './env.js';
 import type { CoreData } from './updateBin.js';
 import { readFile } from 'fs/promises';
 import fetch from 'node-fetch';
 import { performance } from 'perf_hooks';
 import { Script, createContext } from 'vm';
 
-type CompatibleContext = { initData: InitContext };
+type CompatibleContext = { initData: Readonly<InitData> };
 
 const coreDataBin: ArrayBuffer[] = [];
 
@@ -108,14 +108,15 @@ const dummyToken = {
 export const getClientKey = () =>
 	new Promise<ClientKey>((resolve) => {
 		const context: CompatibleContext = {
-			initData: {
+			initData: Object.freeze<InitData>({
 				...baseInit(),
 				coreDataBin: false,
+				resolve: null,
 				async generateToken(clientKey) {
 					resolve(JSON.parse(clientKey));
 					return JSON.stringify(dummyToken);
 				},
-			},
+			}),
 		};
 
 		createContext(context);
@@ -126,7 +127,7 @@ export const getClientKey = () =>
 export const hashToken = (token: Token) =>
 	new Promise<HashedData>((resolve) => {
 		const context: CompatibleContext = {
-			initData: {
+			initData: Object.freeze<InitData>({
 				...baseInit(),
 				coreDataBin: false,
 				resolve: (hashed) => resolve(JSON.parse(hashed)),
@@ -147,7 +148,7 @@ export const hashToken = (token: Token) =>
 						return decoded;
 					}
 				},
-			},
+			}),
 		};
 
 		createContext(context);
@@ -158,7 +159,7 @@ export const hashToken = (token: Token) =>
 export const game = () =>
 	new Promise<string>((resolve) => {
 		const context: CompatibleContext = {
-			initData: {
+			initData: Object.freeze<InitData>({
 				...baseInit(),
 				resolve: (script) => resolve(script),
 				async generateToken() {
@@ -178,7 +179,7 @@ export const game = () =>
 						return decoded;
 					}
 				},
-			},
+			}),
 		};
 
 		createContext(context);

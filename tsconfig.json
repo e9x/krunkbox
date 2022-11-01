@@ -1,8 +1,9 @@
 {
 	"compilerOptions": {
 		"outDir": "dist",
-		"target": "ES2022",
-		"lib": ["DOM", "DOM.Iterable", "ES2018"],
+		"target": "ESNext",
+		"types": ["node"],
+		"lib": ["ESNext"],
 		"baseUrl": "src",
 		"strict": true,
 		"stripInternal": true,
