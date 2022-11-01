@@ -1,22 +1,22 @@
-import type { ContextWorker } from './server.js';
+import type { ContextWorker } from "./server.js";
 
 export default async function (context: ContextWorker) {
-	console.time('hash');
-	const hashed = await context.run(
-		{
-			token: 'Ybcxf0BXJsAkgNWtQMnvfGgHQkkfYVXg',
-			cfid: 3323532784,
-			sid: 2094532721,
-		},
-		{ name: 'hashToken' }
-	);
-	console.timeEnd('hash');
+  console.time("hash");
+  const hashed = await context.run(
+    {
+      token: "Ybcxf0BXJsAkgNWtQMnvfGgHQkkfYVXg",
+      cfid: 3323532784,
+      sid: 2094532721,
+    },
+    { name: "hashToken" }
+  );
+  console.timeEnd("hash");
 
-	console.log('hash:', hashed);
+  console.log("hash:", hashed);
 
-	console.time('clientKey');
-	const clientKey = await context.run(undefined, { name: 'getClientKey' });
-	console.timeEnd('clientKey');
+  console.time("clientKey");
+  const clientKey = await context.run(undefined, { name: "getClientKey" });
+  console.timeEnd("clientKey");
 
-	console.log('clientKey:', clientKey);
+  console.log("clientKey:", clientKey);
 }

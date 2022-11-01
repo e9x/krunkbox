@@ -1,37 +1,37 @@
 {
-	"name": "matchmaker",
-	"version": "1.0.0",
-	"description": "",
-	"author": "",
-	"main": "index.js",
-	"scripts": {
-		"start": "node dist/server.js",
-		"build": "tsc",
-		"build:watch": "tsc --watch"
-	},
-	"type": "module",
-	"license": "ISC",
-	"dependencies": {
-		"@fastify/cors": "^8.1.0",
-		"@fastify/static": "^6.5.0",
-		"@tootallnate/once": "^3.0.0",
-		"dotenv-expand": "^9.0.0",
-		"dotenv-flow": "^3.2.0",
-		"fastify": "^4.5.3",
-		"node-fetch": "^3.2.8",
-		"piscina": "^3.2.0",
-		"terser": "^5.15.0"
-	},
-	"devDependencies": {
-		"@ianvs/prettier-plugin-sort-imports": "^3.4.2",
-		"@types/dotenv-flow": "^3.2.0",
-		"@types/md5": "^2.3.2",
-		"@types/node": "^18.7.16",
-		"@typescript-eslint/eslint-plugin": "^5.38.0",
-		"eslint": "^8.23.0",
-		"eslint-config-prettier": "^8.5.0",
-		"eslint-plugin-import": "^2.26.0",
-		"prettier": "^2.7.1",
-		"typescript": "^4.8.3"
-	}
+  "name": "matchmaker",
+  "version": "1.0.0",
+  "description": "",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "build:watch": "tsc --watch"
+  },
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/cors": "^8.1.0",
+    "@fastify/static": "^6.5.0",
+    "@tootallnate/once": "^3.0.0",
+    "dotenv-expand": "^9.0.0",
+    "dotenv-flow": "^3.2.0",
+    "fastify": "^4.5.3",
+    "node-fetch": "^3.2.8",
+    "piscina": "^3.2.0",
+    "terser": "^5.15.0"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^3.4.2",
+    "@types/dotenv-flow": "^3.2.0",
+    "@types/md5": "^2.3.2",
+    "@types/node": "^18.7.16",
+    "@typescript-eslint/eslint-plugin": "^5.38.0",
+    "eslint": "^8.23.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "prettier": "^2.7.1",
+    "typescript": "^4.8.3"
+  }
 }
