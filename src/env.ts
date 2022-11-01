@@ -11,22 +11,21 @@ export type HashedData = number[];
 
 export interface InitContext {
 	contentWindow: typeof globalThis;
-	gameCoreData: Buffer;
+	coreDataBin: ArrayBuffer[] | false;
 	performanceNow: () => number;
 	TextDecoder: typeof TextDecoder;
 	Uint8Array: typeof Uint8Array;
 	console: typeof console;
-	enableConsole: boolean;
 	generateToken: (clientKey: string) => Promise<string>;
 	WebAssembly: typeof WebAssembly;
-	resolve: (data: unknown) => void;
+	resolve?: (data: string) => void;
 }
 
 declare global {
 	// eslint-disable-next-line no-var
 	var initData: InitContext | undefined;
 	// eslint-disable-next-line no-var
-	var resolve: InitContext['resolve'];
+	var resolve: (data: string) => void;
 }
 
 {
@@ -37,12 +36,11 @@ declare global {
 
 	const {
 		contentWindow,
-		gameCoreData,
+		coreDataBin,
 		performanceNow,
 		TextDecoder,
 		Uint8Array,
 		console,
-		enableConsole,
 		generateToken,
 		WebAssembly,
 		resolve,
@@ -52,12 +50,14 @@ declare global {
 
 	if (resolve) {
 		// "return" from the script
-		window.resolve = (data: unknown) => resolve(data);
+		window.resolve = (data: string) => {
+			resolve(data);
+		};
 	}
 
 	window.WebAssembly = WebAssembly;
 
-	if (enableConsole) {
+	if (console) {
 		const consoleLike: Partial<typeof console> = {};
 
 		for (const key of [
@@ -88,6 +88,7 @@ declare global {
 	} as Location;
 
 	window.XMLHttpRequest = class {
+		#url?: string;
 		readyState?: number;
 		statusText?: string;
 		status?: number;
@@ -98,10 +99,24 @@ declare global {
 			this.readyState = 4;
 			this.statusText = 'OK';
 			this.status = 200;
-			this.response = new window.Uint8Array(gameCoreData).buffer;
+			if (coreDataBin) {
+				const splitID = Number(
+					(this.#url?.match(/core.dat.split-(\d+)\?/) || [])[1]
+				);
+
+				if (isNaN(splitID))
+					throw new Error(`Unrecognized XMLHttpRequest resource: ${this.#url}`);
+
+				this.response = new window.Uint8Array(coreDataBin[splitID]).buffer;
+			} else {
+				this.response = new window.Uint8Array();
+			}
+
 			if (this.onload) this.onload();
 		}
-		open() {}
+		open(method: string, url: string) {
+			this.#url = url;
+		}
 	} as unknown as typeof XMLHttpRequest;
 
 	window.WebSocket = class {

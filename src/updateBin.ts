@@ -1,43 +1,36 @@
 import once from '@tootallnate/once';
-import type { WriteStream } from 'fs';
+import type { PathLike, WriteStream } from 'fs';
 import { createWriteStream } from 'fs';
-import { stat } from 'fs/promises';
+import { readFile, stat, unlink, writeFile } from 'fs/promises';
 import fetch from 'node-fetch';
-import { fileURLToPath } from 'url';
 
-interface Resource {
-	alias: 'loader js' | 'loader wasm' | 'core dat';
+interface LoaderResource {
+	alias: 'loader js' | 'loader wasm';
 	url: string;
-	path: string;
+	path: PathLike;
 }
 
-const resources: Resource[] = [
+const resources: LoaderResource[] = [
 	{
 		alias: 'loader js',
 		url: 'https://krunker.io/pkg/loader.js',
-		path: fileURLToPath(new URL('../bin/loader.js', import.meta.url)),
+		path: new URL('../bin/loader.js', import.meta.url),
 	},
 	{
 		alias: 'loader wasm',
 		url: 'https://krunker.io/pkg/loader.wasm',
-		path: fileURLToPath(new URL('../bin/loader.wasm', import.meta.url)),
-	},
-	{
-		alias: 'core dat',
-		url: 'https://krunker.io/pkg/core.dat',
-		path: fileURLToPath(new URL('../bin/core.dat', import.meta.url)),
+		path: new URL('../bin/loader.wasm', import.meta.url),
 	},
 ];
 
-export default async function updateBin() {
-	type Updated = Record<Resource['alias'], boolean>;
-	const updated: Partial<Updated> = {};
-	let anyUpdated = false;
+type Updated = Record<LoaderResource['alias'] | 'core dat', boolean>;
 
+async function testLoaders(updated: Partial<Updated>) {
 	const writeStreams: WriteStream[] = [];
 
 	for (const res of resources) {
 		const response = await fetch(res.url);
+		if (!response.ok || !response.body) throw new Error('Fatal error');
 
 		try {
 			const stats = await stat(res.path);
@@ -48,19 +41,91 @@ export default async function updateBin() {
 
 			if (lastModified.getTime() <= stats.mtimeMs) continue;
 		} catch (err) {
-			if ((err as { code?: string })?.code !== 'ENOENT') throw err;
+			if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err;
 		}
 
-		anyUpdated = true;
 		updated[res.alias] = true;
 
 		const writeStream = createWriteStream(res.path);
-		response.body!.pipe(writeStream);
-
+		response.body.pipe(writeStream);
 		writeStreams.push(writeStream);
 	}
 
 	for (const writeStream of writeStreams) await once(writeStream, 'end');
+}
 
-	return anyUpdated && (updated as Updated);
+const coreDataPath = new URL('../bin/coreData.json', import.meta.url);
+const coreDir = new URL('../bin/cores/', import.meta.url);
+
+/**
+ * Array of last-modified headers, i = split
+ */
+export type CoreData = string[];
+
+async function getCoreData(): Promise<CoreData | void> {
+	try {
+		return JSON.parse(await readFile(coreDataPath, 'utf-8'));
+	} catch (err) {
+		// who cares
+	}
+}
+
+async function fetchPkg(i: number) {
+	const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`);
+	if (!res.ok || !res.body) throw new Error('Fatal error');
+	await writeFile(
+		new URL(`core.dat.split-${i}`, coreDir),
+		Buffer.from(await res.arrayBuffer())
+	);
+}
+
+async function testCoreDat(updated: Partial<Updated>) {
+	// updated['core dat'] = true;
+	const coreData = await getCoreData();
+	const newCoreData: CoreData = [];
+
+	let splitCores = 0;
+
+	// eslint-disable-next-line no-constant-condition
+	while (true) {
+		const res = await fetch(
+			`https://krunker.io/pkg/core.dat.split-${splitCores}`,
+			{
+				method: 'HEAD',
+			}
+		);
+
+		if (!res.ok) break;
+
+		const lastModified = res.headers.get('last-modified');
+
+		if (!lastModified) throw new Error('Invalid last-modified header');
+
+		newCoreData.push(lastModified);
+
+		splitCores++;
+	}
+
+	if (!coreData || splitCores !== coreData.length) {
+		updated['core dat'] = true;
+		if (coreData) {
+			for (let i = 0; i < coreData.length; i++)
+				await unlink(new URL(`core.dat.split-${i}`, coreDir));
+		}
+	}
+
+	const fetching: Promise<void>[] = [];
+	for (let i = 0; i < newCoreData.length; i++) fetching.push(fetchPkg(i));
+	await Promise.all(fetching);
+
+	await writeFile(coreDataPath, JSON.stringify(newCoreData));
+}
+
+export default async function updateBin() {
+	const updated: Partial<Updated> = {};
+
+	await testLoaders(updated);
+	await testCoreDat(updated);
+
+	return updated;
 }

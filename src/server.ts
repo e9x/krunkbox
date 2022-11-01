@@ -6,9 +6,9 @@ import fastifyStatic from '@fastify/static';
 import { expand } from 'dotenv-expand';
 import { config } from 'dotenv-flow';
 import fastify from 'fastify';
-import { access, unlink } from 'fs/promises';
+import { access, unlink } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import Piscina from 'piscina';
-import { fileURLToPath } from 'url';
 
 expand(config());
 
@@ -27,7 +27,7 @@ export interface ParseWorker extends Piscina {
 
 const parse: ParseWorker = new Piscina({
 	maxThreads: 1,
-	filename: fileURLToPath(new URL('./parseWorker.js', import.meta.url)),
+	filename: new URL('./parseWorker.js', import.meta.url).toString(),
 });
 
 let context: ContextWorker | undefined;
@@ -41,30 +41,31 @@ async function parseGame() {
 async function updateContext() {
 	const updated = await updateBin();
 
-	if (updated || !context) {
+	if (
+		updated['core dat'] ||
+		updated['loader js'] ||
+		updated['loader wasm'] ||
+		!context
+	) {
 		if (context) context.destroy();
 
 		context = new Piscina({
-			filename: fileURLToPath(new URL('./contextWorker.js', import.meta.url)),
+			filename: new URL('./contextWorker.js', import.meta.url).toString(),
 		});
 
 		if (updated && updated['core dat']) {
 			try {
-				await unlink(
-					fileURLToPath(new URL('../bin/game.min.js', import.meta.url))
-				);
+				await unlink(new URL('../bin/game.min.js', import.meta.url));
 			} catch (err) {
-				if ((err as { code?: string })?.code !== 'ENOENT') throw err;
+				if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err;
 			}
 
 			await parseGame();
 		} else {
 			try {
-				await access(
-					fileURLToPath(new URL('../bin/gameVars.json', import.meta.url))
-				);
+				await access(new URL('../bin/gameVars.json', import.meta.url));
 			} catch (err) {
-				if ((err as { code?: string })?.code !== 'ENOENT') throw err;
+				if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err;
 
 				await parseGame();
 			}
