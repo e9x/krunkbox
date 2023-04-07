@@ -1,4 +1,4 @@
-import type { Token, HashedData, ClientKey } from "./env.js";
+import type { Token, HashedData } from "./env.js";
 import test from "./test.js";
 import updateBin from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
@@ -15,10 +15,6 @@ expand(config());
 export interface ContextWorker extends Piscina {
   run(task: undefined, runOptions: { name: "game" }): Promise<string>;
   run(task: Token, runOptions: { name: "hashToken" }): Promise<HashedData>;
-  run(
-    task: undefined,
-    runOptions: { name: "getClientKey" }
-  ): Promise<ClientKey>;
 }
 
 export interface ParseWorker extends Piscina {
@@ -50,6 +46,7 @@ async function updateContext() {
     if (context) context.destroy();
 
     context = new Piscina({
+      maxThreads: 1, // DEBUG
       filename: new URL("./contextWorker.js", import.meta.url).toString(),
     });
 
@@ -107,14 +104,6 @@ server.route({
   url: "/vars",
   handler(request, reply) {
     reply.sendFile("gameVars.json");
-  },
-});
-
-server.route({
-  method: "GET",
-  url: "/clientKey",
-  async handler(request, reply) {
-    reply.send(await context?.run(undefined, { name: "getClientKey" }));
   },
 });
 

@@ -13,10 +13,4 @@ export default async function (context: ContextWorker) {
   console.timeEnd("hash");
 
   console.log("hash:", hashed);
-
-  console.time("clientKey");
-  const clientKey = await context.run(undefined, { name: "getClientKey" });
-  console.timeEnd("clientKey");
-
-  console.log("clientKey:", clientKey);
 }

@@ -5,8 +5,6 @@ export interface Token {
   sid: number;
 }
 
-export type ClientKey = number[];
-
 export type HashedData = number[];
 
 /**
@@ -17,8 +15,9 @@ export interface InitData {
   coreDataBin: ArrayBuffer[] | false;
   performanceNow: () => number;
   TextDecoder: typeof TextDecoder;
+  URL: typeof URL;
   console: typeof console | null;
-  generateToken: (clientKey: string) => Promise<string>;
+  generateToken: () => Promise<string>;
   WebAssembly: typeof WebAssembly;
   resolve: ((data: string) => void) | null;
 }
@@ -31,7 +30,7 @@ declare global {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-var
 declare var window: any;
 
-{
+(async () => {
   Object.defineProperty(globalThis, "window", {
     configurable: false,
     value: globalThis,
@@ -188,10 +187,7 @@ declare var window: any;
     return init;
   };
 
-  const fetch = async function fetch(
-    url: string | URL,
-    init: { headers: HotHeaders }
-  ) {
+  const fetch = async function fetch(url: string | URL) {
     url = url.toString();
 
     if (url.startsWith("/pkg/loader.wasm")) return;
@@ -199,11 +195,7 @@ declare var window: any;
     if (url === "https://matchmaker.krunker.io/generate-token")
       return {
         async json() {
-          return JSON.parse(
-            await initData.generateToken(
-              JSON.stringify(init.headers["Client-Key"])
-            )
-          );
+          return JSON.parse(await initData.generateToken());
         },
       };
   };
@@ -236,6 +228,7 @@ declare var window: any;
   window.XMLHttpRequest = XMLHttpRequest;
   window.TextDecoder = TextDecoder;
   window.WebAssembly = WebAssembly;
+  window.URL = URL;
 
   Object.defineProperty(Object.prototype, "Context", {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -243,4 +236,4 @@ declare var window: any;
     configurable: false,
     enumerable: false,
   });
-}
+})();

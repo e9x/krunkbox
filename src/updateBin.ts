@@ -1,8 +1,14 @@
 import once from "@tootallnate/once";
 import type { PathLike, WriteStream } from "fs";
 import { createWriteStream } from "fs";
-import { readFile, stat, unlink, writeFile } from "fs/promises";
+import { mkdir, readdir, stat, writeFile } from "fs/promises";
 import fetch from "node-fetch";
+import rimraf from "rimraf";
+import { fileURLToPath } from "url";
+
+export const loaderScriptPath = new URL("../bin/loader.mjs", import.meta.url);
+export const loaderWasmPath = new URL("../bin/loader.wasm", import.meta.url);
+export const coreDir = new URL("../bin/cores/", import.meta.url);
 
 interface LoaderResource {
   alias: "loader js" | "loader wasm";
@@ -13,13 +19,13 @@ interface LoaderResource {
 const resources: LoaderResource[] = [
   {
     alias: "loader js",
-    url: "https://krunker.io/pkg/loader.js",
-    path: new URL("../bin/loader.js", import.meta.url),
+    url: "https://krunker.io/pkg/loader.mjs",
+    path: loaderScriptPath,
   },
   {
     alias: "loader wasm",
     url: "https://krunker.io/pkg/loader.wasm",
-    path: new URL("../bin/loader.wasm", import.meta.url),
+    path: loaderWasmPath,
   },
 ];
 
@@ -30,7 +36,8 @@ async function testLoaders(updated: Partial<Updated>) {
 
   for (const res of resources) {
     const response = await fetch(res.url);
-    if (!response.ok || !response.body) throw new Error("Fatal error");
+    if (!response.ok || !response.body)
+      throw new Error(`Fatal error: Cannot fetch ${res.url}`);
 
     try {
       const stats = await stat(res.path);
@@ -54,37 +61,14 @@ async function testLoaders(updated: Partial<Updated>) {
   for (const writeStream of writeStreams) await once(writeStream, "end");
 }
 
-const coreDataPath = new URL("../bin/coreData.json", import.meta.url);
-const coreDir = new URL("../bin/cores/", import.meta.url);
-
-/**
- * Array of last-modified headers, i = split
- */
-export type CoreData = string[];
-
-async function getCoreData(): Promise<CoreData | void> {
-  try {
-    return JSON.parse(await readFile(coreDataPath, "utf-8"));
-  } catch (err) {
-    // who cares
-  }
-}
-
-async function fetchPkg(i: number) {
-  const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`);
-  if (!res.ok || !res.body) throw new Error("Fatal error");
-  await writeFile(
-    new URL(`core.dat.split-${i}`, coreDir),
-    Buffer.from(await res.arrayBuffer())
-  );
-}
-
 async function testCoreDat(updated: Partial<Updated>) {
-  // updated['core dat'] = true;
-  const coreData = await getCoreData();
-  const newCoreData: CoreData = [];
-
+  const coreData = await Promise.all(
+    (
+      await readdir(coreDir).catch(() => [])
+    ).map(async (file) => (await stat(new URL(file, coreDir))).mtimeMs)
+  );
   let splitCores = 0;
+  let didUpdate = false;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -101,24 +85,41 @@ async function testCoreDat(updated: Partial<Updated>) {
 
     if (!lastModified) throw new Error("Invalid last-modified header");
 
-    newCoreData.push(lastModified);
+    const mtimeMs = new Date(lastModified).getTime();
+
+    if (splitCores + 1 >= coreData.length || coreData[splitCores] < mtimeMs) {
+      didUpdate = true;
+    }
 
     splitCores++;
   }
 
-  if (!coreData || splitCores !== coreData.length) {
+  if (didUpdate) {
     updated["core dat"] = true;
-    if (coreData) {
-      for (let i = 0; i < coreData.length; i++)
-        await unlink(new URL(`core.dat.split-${i}`, coreDir));
-    }
+    await rimraf(fileURLToPath(coreDir));
   }
 
-  const fetching: Promise<void>[] = [];
-  for (let i = 0; i < newCoreData.length; i++) fetching.push(fetchPkg(i));
-  await Promise.all(fetching);
+  const promises: Promise<void>[] = [];
 
-  await writeFile(coreDataPath, JSON.stringify(newCoreData));
+  try {
+    await mkdir(coreDir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
+  }
+
+  for (let i = 0; i < splitCores; i++)
+    promises.push(
+      (async () => {
+        const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`);
+        if (!res.ok || !res.body) throw new Error("Fatal error");
+        await writeFile(
+          new URL(`core.dat.split-${i}`, coreDir),
+          Buffer.from(await res.arrayBuffer())
+        );
+      })()
+    );
+
+  await Promise.all(promises);
 }
 
 export default async function updateBin() {

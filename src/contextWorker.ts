@@ -1,23 +1,19 @@
-import type { ClientKey, HashedData, Token, InitData } from "./env.js";
-import type { CoreData } from "./updateBin.js";
-import { readFile } from "fs/promises";
+import type { HashedData, Token, InitData } from "./env.js";
+import { readdir, readFile } from "fs/promises";
 import fetch from "node-fetch";
 import { performance } from "perf_hooks";
+import { loaderScriptPath } from "updateBin.js";
 import { Script, createContext } from "vm";
 
 type CompatibleContext = { initData: Readonly<InitData> };
 
-const coreDataBin: ArrayBuffer[] = [];
-
-const coreDataPath = new URL("../bin/coreData.json", import.meta.url);
 const coreDir = new URL("../bin/cores/", import.meta.url);
 
-const coreData = JSON.parse(await readFile(coreDataPath, "utf-8")) as CoreData;
-
-for (let i = 0; i < coreData.length; i++)
-  coreDataBin.push(
-    (await readFile(new URL(`core.dat.split-${i}`, coreDir))).buffer
-  );
+const coreDataBin: ArrayBuffer[] = await Promise.all(
+  (
+    await readdir(coreDir)
+  ).map(async (file) => (await readFile(new URL(file, coreDir))).buffer)
+);
 
 const initScriptPath = new URL("./env.js", import.meta.url);
 
@@ -28,9 +24,23 @@ const initScript = new Script(
   }
 );
 
-const loaderScriptPath = new URL("../bin/loader.js", import.meta.url);
-const loaderScript = new Script(await readFile(loaderScriptPath, "utf-8"), {
-  filename: loaderScriptPath.toString(),
+const loaderScriptPath2 = new URL("../bin/loader.patch.mjs", import.meta.url);
+
+const loaderScript = new Script(
+  (await readFile(loaderScriptPath2, "utf-8"))
+    // simulate ESM support
+    .replace(
+      /import\.meta/g,
+      JSON.stringify({ url: "https://krunker.io/pkg/loader.mjs" })
+    )
+    .replace(/export default/g, "this.defaultExport = "),
+  {
+    filename: loaderScriptPath2.toString(),
+  }
+);
+
+const executeDefaultScript = new Script("defaultExport()", {
+  filename: "Default Execute",
 });
 
 const getThis = new Script("this");
@@ -64,17 +74,17 @@ const baseInit = () => ({
   coreDataBin,
   performanceNow: performance.now,
   TextDecoder,
+  URL,
   console,
-  async generateToken(clientKey: string) {
+  async generateToken() {
     return await (
       await fetch("https://matchmaker.krunker.io/generate-token", {
         headers: {
-          "Client-Key": clientKey,
           "User-Agent":
             "Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0",
         },
       })
-    ).text();
+    ).arrayBuffer();
   },
   fetch,
   contentWindow: getThis.runInNewContext(),
@@ -97,6 +107,7 @@ const baseInit = () => ({
 	createContext(context);
 	initScript.runInContext(context);
 	loaderScript.runInContext(context);
+  executeDefaultScript.runInContext(context);
 }*/
 
 const dummyToken = {
@@ -104,25 +115,6 @@ const dummyToken = {
   cfid: 0,
   sid: 0,
 };
-
-export const getClientKey = () =>
-  new Promise<ClientKey>((resolve) => {
-    const context: CompatibleContext = {
-      initData: Object.freeze<InitData>({
-        ...baseInit(),
-        coreDataBin: false,
-        resolve: null,
-        async generateToken(clientKey) {
-          resolve(JSON.parse(clientKey));
-          return JSON.stringify(dummyToken);
-        },
-      }),
-    };
-
-    createContext(context);
-    initScript.runInContext(context);
-    loaderScript.runInContext(context);
-  });
 
 export const hashToken = (token: Token) =>
   new Promise<HashedData>((resolve) => {
@@ -154,6 +146,7 @@ export const hashToken = (token: Token) =>
     createContext(context);
     initScript.runInContext(context);
     loaderScript.runInContext(context);
+    executeDefaultScript.runInContext(context);
   });
 
 export const game = () =>
@@ -185,4 +178,5 @@ export const game = () =>
     createContext(context);
     initScript.runInContext(context);
     loaderScript.runInContext(context);
+    executeDefaultScript.runInContext(context);
   });
