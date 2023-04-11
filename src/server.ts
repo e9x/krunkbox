@@ -65,6 +65,7 @@ async function updateContext() {
   } else {
     if (!context) await createContext();
     console.log("Up-to-date");
+    test(context!);
   }
 }
 

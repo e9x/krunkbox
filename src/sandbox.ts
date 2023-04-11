@@ -28,7 +28,17 @@ export default async function setupWindow(initData: InitData) {
     value: globalThis,
   });
 
-  const { WebAssembly, URL, console } = initData;
+  const { WebAssembly, console } = initData;
+
+  class URL {
+    #href: string;
+    constructor(a: unknown, b: unknown) {
+      this.#href = new initData.URL(String(a), String(b)).toString();
+    }
+    toString() {
+      return this.#href;
+    }
+  }
 
   class Response {
     constructor(body?: BodyInit | null, init?: ResponseInit) {
