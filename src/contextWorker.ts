@@ -23,6 +23,8 @@ const envModuleJS = new URL("env.js", import.meta.url);
 const envModuleContent = await readFile(envModuleJS, "utf-8");
 const spoofEnvModuleJS = envModuleJS.toString(); // "<anonymous>";
 
+console.time("Compile JS");
+
 const createEnvModule = (
   context?: SourceTextModuleOptions["context"],
   cachedData?: SourceTextModuleOptions["cachedData"]
@@ -58,6 +60,8 @@ const createLoaderModule = (
 
 const loaderModuleCache = createLoaderModule().createCachedData();
 
+console.timeEnd("Compile JS");
+
 function noLinker(): Module {
   throw new Error("Unsupported");
 }
@@ -92,8 +96,6 @@ await modulePromise;
 console.timeEnd("Compile WASM module");
 
 const getThis = new Script("this");
-
-console.time("a");
 
 async function execute(initData: EnvModule.InitData) {
   const context = createContext();
