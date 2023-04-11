@@ -67,6 +67,7 @@ const coreHeaders = {
   "accept-language": "en-US,en;q=0.9",
   "cache-control": "no-cache",
   cookie: "can_use_cookies=test",
+  // SUBJECT TO CHANGE:
   get: "cheat",
   pragma: "no-cache",
   referer: "https://krunker.io/",
