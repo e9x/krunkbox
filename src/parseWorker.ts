@@ -1,5 +1,5 @@
 import { string } from "@tdewolff/minify";
-import { writeFile } from "fs/promises";
+import { writeFile } from "node:fs/promises";
 
 export async function parse(gameScript: string) {
   await writeFile(new URL("../bin/game.debug.js", import.meta.url), gameScript);
