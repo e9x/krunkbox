@@ -146,8 +146,10 @@ export const game = () =>
             let source = args[1];
             args[1] = ``;
 
-            for (const [key, value] of env.getRenamed())
-              source = source.replaceAll(key, value);
+            const renamed = env.getRenamed();
+
+            for (const key in renamed)
+              source = source.replaceAll(key, renamed[key]);
 
             source = source.replaceAll(args[0], "WP_MMToken");
 

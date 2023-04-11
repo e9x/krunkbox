@@ -460,16 +460,16 @@ export default async function setupWindow(initData: InitData) {
 
   return {
     getRenamed: () => {
-      const found = new Map<string, string>();
+      const found: Record<string, string> = Object.create(null);
 
       for (const key in window)
         if (window[key] === setTimeout && key !== "setTimeout")
-          found.set("setTimeout", key);
+          found.setTimeout = key;
         else if (
           window[key] === requestAnimationFrame &&
           key !== "requestAnimationFrame"
         )
-          found.set("requestAnimationFrame", key);
+          found.requestAnimationFrame = key;
 
       return found;
     },
