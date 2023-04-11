@@ -1,14 +1,8 @@
-import type * as EnvModule from "./env.js";
 import "source-map-support/register.js";
+import type * as EnvModule from "./env.js";
 import { readdir, readFile } from "node:fs/promises";
 import type { Module, SourceTextModuleOptions } from "node:vm";
 import { createContext, Script, SourceTextModule } from "node:vm";
-
-declare module "node:vm" {
-  interface SourceTextModule {
-    createCachedData(): Buffer;
-  }
-}
 
 const loaderWasmPath = new URL("../bin/loader.wasm", import.meta.url);
 const coreDir = new URL("../bin/cores/", import.meta.url);
@@ -120,10 +114,6 @@ const baseInit = (): EnvModule.InitData => ({
     ).arrayBuffer(),
   contentWindow: getThis.runInNewContext(),
 });
-
-/*await execute({
-  ...baseInit(),
-});*/
 
 export const hashToken = (token: ArrayBuffer) =>
   new Promise<string>((resolve) =>
