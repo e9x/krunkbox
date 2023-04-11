@@ -31,8 +31,6 @@ export default async function setupWindow(initData: InitData) {
 
   const { WebAssembly, URL, console } = initData;
 
-  class Request {}
-
   class Response {
     constructor(body?: BodyInit | null, init?: ResponseInit) {
       console.log("New response", { body, init });
@@ -352,7 +350,6 @@ export default async function setupWindow(initData: InitData) {
   window.TextDecoder = TextDecoder;
   window.WebAssembly = WebAssembly;
   window.URL = URL;
-  window.Request = Request;
   window.Response = Response;
   window.setTimeout = setTimeout;
 
@@ -368,7 +365,6 @@ export default async function setupWindow(initData: InitData) {
   initData.contentWindow.HTMLBodyElement = HTMLBodyElement;
   initData.contentWindow.HTMLCanvasElement = HTMLCanvasElement;
   initData.contentWindow.TextDecoder = TextDecoder;
-  initData.contentWindow.Request = Request;
   initData.contentWindow.Response = Response;
   initData.contentWindow.fetch = getFetch();
 
