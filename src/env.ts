@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-empty-function */
-export type HashedData = number[];
 
 /**
  * Init object cannot contain any void fields to prevent Object property hooks...

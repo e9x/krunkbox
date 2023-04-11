@@ -1,4 +1,3 @@
-import type { HashedData } from "./env.js";
 import test from "./test.js";
 import updateBin from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
@@ -14,10 +13,7 @@ expand(config());
 
 export interface ContextWorker extends Piscina {
   run(task: undefined, runOptions: { name: "game" }): Promise<string>;
-  run(
-    task: ArrayBuffer,
-    runOptions: { name: "hashToken" }
-  ): Promise<HashedData>;
+  run(task: ArrayBuffer, runOptions: { name: "hashToken" }): Promise<string>;
 }
 
 export interface ParseWorker extends Piscina {
