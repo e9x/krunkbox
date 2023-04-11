@@ -44,7 +44,7 @@ async function updateContext() {
     updated["loader wasm"] ||
     !context
   ) {
-    console.log("update!! !");
+    console.log("Game updated");
 
     if (context) context.destroy();
 
