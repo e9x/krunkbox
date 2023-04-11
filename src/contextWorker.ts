@@ -1,6 +1,6 @@
 /* eslint-disable no-async-promise-executor */
 import "source-map-support/register.js";
-import type * as EnvModule from "./env.js";
+import type * as SandboxModule from "./sandbox.js";
 import { readdir, readFile } from "node:fs/promises";
 import type { Module, SourceTextModuleOptions } from "node:vm";
 import { createContext, Script, SourceTextModule } from "node:vm";
@@ -14,23 +14,23 @@ const coreDataBin: ArrayBuffer[] = await Promise.all(
   ).map(async (file) => (await readFile(new URL(file, coreDir))).buffer)
 );
 
-const envModuleJS = new URL("env.js", import.meta.url);
-const envModuleContent = await readFile(envModuleJS, "utf-8");
-const spoofEnvModuleJS = envModuleJS.toString(); // "<anonymous>";
+const sandboxModuleJS = new URL("sandbox.js", import.meta.url);
+const sandboxModuleContent = await readFile(sandboxModuleJS, "utf-8");
+const spoofSandboxModuleJS = sandboxModuleJS.toString(); // "<anonymous>";
 
 console.time("Compile JS");
 
-const createEnvModule = (
+const createSandboxModule = (
   context?: SourceTextModuleOptions["context"],
   cachedData?: SourceTextModuleOptions["cachedData"]
 ) =>
-  new SourceTextModule(envModuleContent, {
+  new SourceTextModule(sandboxModuleContent, {
     context,
-    identifier: spoofEnvModuleJS,
+    identifier: spoofSandboxModuleJS,
     cachedData,
   });
 
-const envModuleCache = createEnvModule().createCachedData();
+const sandboxModuleCache = createSandboxModule().createCachedData();
 
 const loaderModuleJS = new URL("../bin/loader.mjs", import.meta.url);
 const loaderModuleJSContent = await readFile(loaderModuleJS, "utf-8");
@@ -85,17 +85,19 @@ console.timeEnd("Compile WASM module");
 
 const getThis = new Script("this");
 
-async function execute(initData: EnvModule.InitData) {
+async function execute(initData: SandboxModule.InitData) {
   const context = createContext();
 
-  const envModule = createEnvModule(context, envModuleCache);
-  await envModule.link(noLinker);
-  await envModule.evaluate();
+  const sandboxModule = createSandboxModule(context, sandboxModuleCache);
+  await sandboxModule.link(noLinker);
+  await sandboxModule.evaluate();
 
   const loaderModule = createLoaderModule(context, loaderModuleCache);
   await loaderModule.link(noLinker);
 
-  const env = (envModule.namespace as typeof EnvModule).default(initData);
+  const env = (sandboxModule.namespace as typeof SandboxModule).default(
+    initData
+  );
 
   await loaderModule.evaluate();
   (loaderModule.namespace as LoaderModule).default();
@@ -103,7 +105,7 @@ async function execute(initData: EnvModule.InitData) {
   return env;
 }
 
-const baseInit = (): EnvModule.InitData => ({
+const baseInit = (): SandboxModule.InitData => ({
   coreDataBin,
   TextDecoder,
   WebAssembly,
