@@ -3,7 +3,7 @@ import type { PathLike, WriteStream } from "fs";
 import { createWriteStream } from "fs";
 import { mkdir, readdir, stat, writeFile } from "fs/promises";
 import fetch from "node-fetch";
-import rimraf from "rimraf";
+import { rimraf } from "rimraf";
 import { fileURLToPath } from "url";
 
 export const loaderScriptPath = new URL("../bin/loader.mjs", import.meta.url);
