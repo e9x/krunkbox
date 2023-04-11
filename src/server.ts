@@ -35,22 +35,19 @@ async function parseGame() {
 async function updateContext() {
   const updated = await updateBin();
 
-  if (
-    updated["core dat"] ||
-    updated["loader js"] ||
-    updated["loader wasm"] ||
-    !context
-  ) {
-    console.log("Game updated?", updated);
+  console.log("Game updated?", updated);
 
-    if (context) context.destroy();
+  if (updated["core dat"] || updated["loader js"] || updated["loader wasm"]) {
+    console.log("Updated");
+
+    if (context) await context.destroy();
 
     context = new Piscina({
       maxThreads: 1, // DEBUG
       filename: new URL("./contextWorker.js", import.meta.url).toString(),
     });
 
-    if (updated && updated["core dat"]) {
+    if (updated["core dat"]) {
       try {
         await unlink(new URL("../bin/game.min.js", import.meta.url));
       } catch (err) {
@@ -60,13 +57,9 @@ async function updateContext() {
       await parseGame();
     }
 
-    if (updated) {
-      console.log("Updated");
-    } else {
-      console.log("Up-to-date");
-    }
-
     test(context);
+  } else {
+    console.log("Up-to-date");
   }
 }
 
