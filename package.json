@@ -5,7 +5,7 @@
   "author": "",
   "main": "index.js",
   "scripts": {
-    "start": "node --experimental-vm-modules ./dist/contextWorker.js",
+    "start": "node --experimental-vm-modules ./dist/server.js",
     "build": "tsc",
     "build:watch": "tsc --watch"
   },

@@ -6,7 +6,7 @@ import fastifyStatic from "@fastify/static";
 import { expand } from "dotenv-expand";
 import { config } from "dotenv-flow";
 import fastify from "fastify";
-import { access, unlink } from "node:fs/promises";
+import { unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 
@@ -20,22 +20,23 @@ export interface ContextWorker extends Piscina {
   ): Promise<HashedData>;
 }
 
-/*export interface ParseWorker extends Piscina {
+export interface ParseWorker extends Piscina {
   run(task: string, runOptions: { name: "parse" }): Promise<void>;
 }
 
 const parse: ParseWorker = new Piscina({
   maxThreads: 1,
   filename: new URL("./parseWorker.js", import.meta.url).toString(),
-});*/
+});
 
 let context: ContextWorker | undefined;
 
 async function parseGame() {
-  /*await parse.run(await context!.run(undefined, { name: "game" }), {
+  if (!context) throw new Error("No context");
+
+  await parse.run(await context.run(undefined, { name: "game" }), {
     name: "parse",
-  });*/
-  console.log("parse game later");
+  });
 }
 
 async function updateContext() {
@@ -64,14 +65,6 @@ async function updateContext() {
       }
 
       await parseGame();
-    } else {
-      try {
-        await access(new URL("../bin/gameVars.json", import.meta.url));
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
-
-        await parseGame();
-      }
     }
 
     if (updated) {
@@ -102,14 +95,6 @@ server.route({
   url: "/source",
   handler(_request, reply) {
     reply.sendFile("game.min.js");
-  },
-});
-
-server.route({
-  method: "GET",
-  url: "/vars",
-  handler(request, reply) {
-    reply.sendFile("gameVars.json");
   },
 });
 

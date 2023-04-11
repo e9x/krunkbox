@@ -1,3 +1,4 @@
+/* eslint-disable no-async-promise-executor */
 import "source-map-support/register.js";
 import type * as EnvModule from "./env.js";
 import { readdir, readFile } from "node:fs/promises";
@@ -94,10 +95,12 @@ async function execute(initData: EnvModule.InitData) {
   const loaderModule = createLoaderModule(context, loaderModuleCache);
   await loaderModule.link(noLinker);
 
-  (envModule.namespace as typeof EnvModule).default(initData);
+  const env = (envModule.namespace as typeof EnvModule).default(initData);
 
   await loaderModule.evaluate();
   (loaderModule.namespace as LoaderModule).default();
+
+  return env;
 }
 
 const baseInit = (): EnvModule.InitData => ({
@@ -116,7 +119,7 @@ const baseInit = (): EnvModule.InitData => ({
 });
 
 export const hashToken = (token: ArrayBuffer) =>
-  new Promise<string>((resolve) =>
+  new Promise<string>((resolve, reject) =>
     execute({
       ...baseInit(),
       resolve: (hashed: string) => resolve(hashed),
@@ -128,53 +131,33 @@ export const hashToken = (token: ArrayBuffer) =>
 
         return args;
       },
-    })
+    }).catch(reject)
   );
 
-const token = await (
-  await fetch("https://matchmaker.krunker.io/generate-token")
-).arrayBuffer();
+export const game = () =>
+  new Promise<string>(async (resolve, reject) => {
+    try {
+      const env = await execute({
+        ...baseInit(),
+        generateToken: () =>
+          new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24]).buffer,
+        newFunction: (args) => {
+          if (args.length === 2 && args[1].startsWith("\nfunction ")) {
+            let source = args[1];
+            args[1] = ``;
 
-console.time("Hashing");
-const butFoundHash = await hashToken(token);
-console.timeEnd("Hashing");
+            for (const [key, value] of env.getRenamed())
+              source = source.replaceAll(key, value);
 
-console.log("Got hash:", new TextEncoder().encode(butFoundHash));
+            source = source.replaceAll(args[0], "WP_MMToken");
 
-const r = await fetch(
-  `https://matchmaker.krunker.io/seek-game?${new URLSearchParams({
-    hostname: "krunker.io",
-    region: "us-nj",
-    autoChangeGame: "false",
-    validationToken: butFoundHash
-      .split("")
-      .map((argInstantPlease) =>
-        String.fromCharCode(argInstantPlease.charCodeAt(0) - 10)
-      )
-      .join(""),
-    dataQuery: JSON.stringify({ v: "dqk8nbmX7Juu0f4b62wtlwM6pw8ytLHG" }),
-  })}`,
-  {
-    headers: {
-      accept: "*/*",
-      "accept-encoding": "gzip, deflate, br",
-      "accept-language": "en-US,en;q=0.6;",
-      "cache-control": "no-cache",
-      origin: "https://krunker.io",
-      pragma: "no-cache",
-      referer: "https://krunker.io/",
-      "sec-ch-ua": '"Chromium";v="111", "Not(A:Brand";v="8"',
-      "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": '"Linux"',
-      "sec-fetch-dest": "empty",
-      "sec-fetch-mode": "cors",
-      "sec-fetch-site": "same-site",
-      "user-agent":
-        "Mozilla/5.0 (X11; Fedora; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
-    },
-  }
-);
+            resolve(source);
+          }
 
-if (r.status == 520) throw new Error("Hash is poisoned");
-
-console.log("Response from seek-game:", r.status, await r.json());
+          return args;
+        },
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
