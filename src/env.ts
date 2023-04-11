@@ -448,4 +448,21 @@ export default async function setupWindow(initData: InitData) {
   hookContext(window);
   hookContext(initData.contentWindow);
   // console.log(Function.prototype.toString.toString());
+
+  return {
+    getRenamed: () => {
+      const found = new Map<string, string>();
+
+      for (const key in window)
+        if (window[key] === setTimeout && key !== "setTimeout")
+          found.set("setTimeout", key);
+        else if (
+          window[key] === requestAnimationFrame &&
+          key !== "requestAnimationFrame"
+        )
+          found.set("requestAnimationFrame", key);
+
+      return found;
+    },
+  };
 }
