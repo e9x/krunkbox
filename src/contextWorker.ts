@@ -66,23 +66,16 @@ function noLinker(): Module {
   throw new Error("Unsupported");
 }
 
-// context provides: WebAssembly, pre-compiled module
-const wasmContext = {};
-
-createContext(wasmContext);
-
 const wasmCompilerJS = new URL("wasmCompiler.js", import.meta.url);
 
 const wasmCompiler = new SourceTextModule(
   await readFile(wasmCompilerJS, "utf-8"),
   {
-    context: wasmContext,
+    context: createContext(),
     identifier: wasmCompilerJS.toString(),
   }
 );
-
 await wasmCompiler.link(noLinker);
-
 await wasmCompiler.evaluate();
 
 const { WebAssembly, modulePromise } =
@@ -112,13 +105,6 @@ async function execute(initData: EnvModule.InitData) {
   await loaderModule.evaluate();
   (loaderModule.namespace as LoaderModule).default();
 }
-
-const str = Function.prototype.toString;
-Function.prototype.toString = function () {
-  const s = str.call(this);
-  console.trace(this, s);
-  return s;
-};
 
 const baseInit = (): EnvModule.InitData => ({
   coreDataBin,
