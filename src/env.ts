@@ -14,7 +14,7 @@ export interface InitData {
   logs: boolean;
   fetch: typeof fetch;
   generateToken: () => Promise<ArrayBuffer> | ArrayBuffer;
-  contentWindow: any;
+  contentWindow: typeof window;
   // Hook new functions
   newFunction?: (args: string[]) => string[];
   resolve?: (data: string) => void;
@@ -99,7 +99,7 @@ export default async function setupWindow(initData: InitData) {
   };
 
   function tag(tag: string) {
-    return function (c: { prototype: any }) {
+    return function (c: { prototype: unknown }) {
       // Symbol.toStringTag is context dependant...?!
       Object.defineProperty(c.prototype, Symbol.toStringTag, {
         configurable: true,
@@ -213,16 +213,16 @@ export default async function setupWindow(initData: InitData) {
 
   @tag("HTMLElement")
   class HTMLElement extends Element {
-    #style: Record<string, any> = {};
+    #style: Record<string, unknown> = {};
     get style() {
       return this.#style;
     }
-    set style(value: Record<string, any>) {
+    set style(value: Record<string, unknown>) {
       this.#style = value;
     }
   }
 
-  const contentWindows = new WeakMap<HTMLIFrameElement, any>();
+  const contentWindows = new WeakMap<HTMLIFrameElement, unknown>();
 
   @tag("HTMLIFrameElement")
   class HTMLIFrameElement extends HTMLElement {
