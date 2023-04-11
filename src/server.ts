@@ -1,15 +1,12 @@
+import { PORT } from "./env.js";
 import test from "./test.js";
 import updateBin from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
-import { expand } from "dotenv-expand";
-import { config } from "dotenv-flow";
 import fastify from "fastify";
 import { unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
-
-expand(config());
 
 export interface ContextWorker extends Piscina {
   run(task: undefined, runOptions: { name: "game" }): Promise<string>;
@@ -105,13 +102,9 @@ server.route({
   },
 });
 
-let port = parseInt(process.env.PORT || "");
-
-if (isNaN(port)) port = 80;
-
 server.listen(
   {
-    port,
+    port: PORT,
   },
   (err, url) => {
     if (err) {
