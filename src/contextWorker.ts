@@ -141,21 +141,15 @@ export const hashToken = (token: ArrayBuffer) =>
     })
   );
 
-const token = new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24]).buffer;
-/*await (
+const token = await (
   await fetch("https://matchmaker.krunker.io/generate-token")
-).arrayBuffer();*/
+).arrayBuffer();
 
 console.time("Hashing");
 const butFoundHash = await hashToken(token);
 console.timeEnd("Hashing");
 
-console.log("butFoundHash", new TextEncoder().encode(butFoundHash));
-
-console.log(
-  "expectedHash",
-  new Uint8Array([40, 16, 37, 16, 16, 37, 46, 16, 42, 46])
-);
+console.log("Got hash:", new TextEncoder().encode(butFoundHash));
 
 const r = await fetch(
   `https://matchmaker.krunker.io/seek-game?${new URLSearchParams({
