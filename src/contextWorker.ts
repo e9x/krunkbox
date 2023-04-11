@@ -120,7 +120,6 @@ Function.prototype.toString = function () {
 
 const baseInit = (): EnvModule.InitData => ({
   coreDataBin,
-  performanceNow: performance.now,
   TextDecoder,
   WebAssembly,
   URL,
