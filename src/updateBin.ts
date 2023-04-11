@@ -1,10 +1,10 @@
 import once from "@tootallnate/once";
-import type { PathLike, WriteStream } from "fs";
-import { createWriteStream } from "fs";
-import { mkdir, readdir, stat, writeFile } from "fs/promises";
-import fetch from "node-fetch";
+import type { PathLike, WriteStream } from "node:fs";
+import { createWriteStream } from "node:fs";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { ReadableWebToNodeStream } from "readable-web-to-node-stream";
 import { rimraf } from "rimraf";
-import { fileURLToPath } from "url";
 
 export const loaderScriptPath = new URL("../bin/loader.mjs", import.meta.url);
 export const loaderWasmPath = new URL("../bin/loader.wasm", import.meta.url);
@@ -54,7 +54,7 @@ async function testLoaders(updated: Partial<Updated>) {
     updated[res.alias] = true;
 
     const writeStream = createWriteStream(res.path);
-    response.body.pipe(writeStream);
+    new ReadableWebToNodeStream(response.body).pipe(writeStream);
     writeStreams.push(writeStream);
   }
 
