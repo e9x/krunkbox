@@ -61,6 +61,25 @@ async function testLoaders(updated: Partial<Updated>) {
   for (const writeStream of writeStreams) await once(writeStream, "end");
 }
 
+const coreHeaders = {
+  accept: "*/*",
+  "accept-encoding": "gzip, deflate, br",
+  "accept-language": "en-US,en;q=0.9",
+  "cache-control": "no-cache",
+  cookie: "can_use_cookies=test",
+  get: "cheat",
+  pragma: "no-cache",
+  referer: "https://krunker.io/",
+  "sec-ch-ua": '"Chromium";v="111", "Not(A:Brand";v="8"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Linux"',
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
+  "user-agent":
+    "Mozilla/5.0 (X11; Fedora; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+};
+
 async function testCoreDat(updated: Partial<Updated>) {
   const coreData = await Promise.all(
     (
@@ -76,6 +95,7 @@ async function testCoreDat(updated: Partial<Updated>) {
       `https://krunker.io/pkg/core.dat.split-${splitCores}`,
       {
         method: "HEAD",
+        headers: coreHeaders,
       }
     );
 
@@ -110,7 +130,9 @@ async function testCoreDat(updated: Partial<Updated>) {
   for (let i = 0; i < splitCores; i++)
     promises.push(
       (async () => {
-        const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`);
+        const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`, {
+          headers: coreHeaders,
+        });
         if (!res.ok || !res.body) throw new Error("Fatal error");
         await writeFile(
           new URL(`core.dat.split-${i}`, coreDir),

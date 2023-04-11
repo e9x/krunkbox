@@ -3,14 +3,15 @@
     "outDir": "dist",
     "target": "ESNext",
     "types": ["node"],
-    "lib": ["ESNext"],
+    "lib": ["DOM", "ESNext"],
     "baseUrl": "src",
     "strict": true,
-    "stripInternal": true,
+    "sourceMap": true,
     "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true
   },
   "include": ["src/**/*"]
 }

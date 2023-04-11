@@ -1,12 +1,16 @@
-import type { HashedData, Token, InitData } from "./env.js";
-import { readdir, readFile } from "fs/promises";
-import fetch from "node-fetch";
-import { performance } from "perf_hooks";
-import { loaderScriptPath } from "updateBin.js";
-import { Script, createContext } from "vm";
+import type * as EnvModule from "./env.js";
+import "source-map-support/register.js";
+import { readdir, readFile } from "node:fs/promises";
+import type { Module, SourceTextModuleOptions } from "node:vm";
+import { createContext, Script, SourceTextModule } from "node:vm";
 
-type CompatibleContext = { initData: Readonly<InitData> };
+declare module "node:vm" {
+  interface SourceTextModule {
+    createCachedData(): Buffer;
+  }
+}
 
+const loaderWasmPath = new URL("../bin/loader.wasm", import.meta.url);
 const coreDir = new URL("../bin/cores/", import.meta.url);
 
 const coreDataBin: ArrayBuffer[] = await Promise.all(
@@ -15,168 +19,189 @@ const coreDataBin: ArrayBuffer[] = await Promise.all(
   ).map(async (file) => (await readFile(new URL(file, coreDir))).buffer)
 );
 
-const initScriptPath = new URL("./env.js", import.meta.url);
+const envModuleJS = new URL("env.js", import.meta.url);
+const envModuleContent = await readFile(envModuleJS, "utf-8");
+const spoofEnvModuleJS = envModuleJS.toString(); // "<anonymous>";
 
-const initScript = new Script(
-  (await readFile(initScriptPath, "utf-8")).replace("export {};", ""),
-  {
-    filename: initScriptPath.toString(),
-  }
-);
+const createEnvModule = (
+  context?: SourceTextModuleOptions["context"],
+  cachedData?: SourceTextModuleOptions["cachedData"]
+) =>
+  new SourceTextModule(envModuleContent, {
+    context,
+    identifier: spoofEnvModuleJS,
+    cachedData,
+  });
 
-const loaderScriptPath2 = new URL("../bin/loader.patch.mjs", import.meta.url);
+const envModuleCache = createEnvModule().createCachedData();
 
-const loaderScript = new Script(
-  (await readFile(loaderScriptPath2, "utf-8"))
-    // simulate ESM support
-    .replace(
-      /import\.meta/g,
-      JSON.stringify({ url: "https://krunker.io/pkg/loader.mjs" })
-    )
-    .replace(/export default/g, "this.defaultExport = "),
-  {
-    filename: loaderScriptPath2.toString(),
-  }
-);
+const loaderModuleJS = new URL("../bin/loader.mjs", import.meta.url);
+const loaderModuleJSContent = await readFile(loaderModuleJS, "utf-8");
+const spoofLoaderModuleJS = loaderModuleJS.toString(); // "https://krunker.io/pkg/loader.mjs?t="; // should the build be here?
 
-const executeDefaultScript = new Script("defaultExport()", {
-  filename: "Default Execute",
-});
+interface LoaderModule {
+  default: (module?: unknown) => void;
+}
 
-const getThis = new Script("this");
+const createLoaderModule = (
+  context?: SourceTextModuleOptions["context"],
+  cachedData?: SourceTextModuleOptions["cachedData"]
+) =>
+  new SourceTextModule(loaderModuleJSContent, {
+    context,
+    identifier: spoofLoaderModuleJS,
+    initializeImportMeta: (meta) => {
+      meta.url = spoofLoaderModuleJS;
+    },
+    cachedData,
+  });
+
+const loaderModuleCache = createLoaderModule().createCachedData();
+
+function noLinker(): Module {
+  throw new Error("Unsupported");
+}
 
 // context provides: WebAssembly, pre-compiled module
-const WebAssemblyContext = {
-  loaderWasmData: (
-    await readFile(new URL("../bin/loader.wasm", import.meta.url))
-  ).buffer,
-};
+const wasmContext = {};
 
-createContext(WebAssemblyContext);
+createContext(wasmContext);
 
-const [WebAssembly, modulePromise] = new Script(`
-const modulePromise = WebAssembly.compile(loaderWasmData);
+const wasmCompilerJS = new URL("wasmCompiler.js", import.meta.url);
 
-WebAssembly.instantiateStreaming = async function (_source, importObject) {
-	const module = await modulePromise;
-	const instance = await WebAssembly.instantiate(module, importObject);
-	return { module, instance };
-};
+const wasmCompiler = new SourceTextModule(
+  await readFile(wasmCompilerJS, "utf-8"),
+  {
+    context: wasmContext,
+    identifier: wasmCompilerJS.toString(),
+  }
+);
 
-[WebAssembly, modulePromise]`).runInContext(WebAssemblyContext);
+await wasmCompiler.link(noLinker);
+
+await wasmCompiler.evaluate();
+
+const { WebAssembly, modulePromise } =
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  (wasmCompiler.namespace as typeof import("./wasmCompiler.js")).compileWasm(
+    (await readFile(loaderWasmPath)).buffer
+  );
 
 console.time("Compile WASM module");
 await modulePromise;
 console.timeEnd("Compile WASM module");
 
-const baseInit = () => ({
-  WebAssembly,
+const getThis = new Script("this");
+
+console.time("a");
+
+async function execute(initData: EnvModule.InitData) {
+  const context = createContext();
+
+  const envModule = createEnvModule(context, envModuleCache);
+  await envModule.link(noLinker);
+  await envModule.evaluate();
+
+  const loaderModule = createLoaderModule(context, loaderModuleCache);
+  await loaderModule.link(noLinker);
+
+  (envModule.namespace as typeof EnvModule).default(initData);
+
+  await loaderModule.evaluate();
+  (loaderModule.namespace as LoaderModule).default();
+}
+
+const str = Function.prototype.toString;
+Function.prototype.toString = function () {
+  const s = str.call(this);
+  console.trace(this, s);
+  return s;
+};
+
+const baseInit = (): EnvModule.InitData => ({
   coreDataBin,
   performanceNow: performance.now,
   TextDecoder,
+  WebAssembly,
   URL,
   console,
-  async generateToken() {
-    return await (
-      await fetch("https://matchmaker.krunker.io/generate-token", {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0",
-        },
-      })
-    ).arrayBuffer();
-  },
   fetch,
+  logs: true,
+  generateToken: async () =>
+    await (
+      await fetch("https://matchmaker.krunker.io/generate-token")
+    ).arrayBuffer(),
   contentWindow: getThis.runInNewContext(),
 });
 
-/*{
-	const context = {
-		initData: {
-			...baseInit,
-			TextDecoder: class extends TextDecoder {
-				decode(buffer) {
-					const decoded = super.decode(buffer);
-					// decoded === "return new Function('WP_fetchMMToken',new TextDecoder().decode(new Uint8Array(arg)))(token)"
+/*await execute({
+  ...baseInit(),
+});*/
 
-					return decoded;
-				},
-			},
-	};
-	
-	createContext(context);
-	initScript.runInContext(context);
-	loaderScript.runInContext(context);
-  executeDefaultScript.runInContext(context);
-}*/
+export const hashToken = (token: ArrayBuffer) =>
+  new Promise<string>((resolve) =>
+    execute({
+      ...baseInit(),
+      resolve: (hashed: string) => resolve(hashed),
+      generateToken: () => token,
+      newFunction: (args) => {
+        // console.log(args);
+        if (args.length === 2 && args[1].startsWith("\nfunction "))
+          args[1] = `window.resolve(${args[0]})`;
 
-const dummyToken = {
-  token: "",
-  cfid: 0,
-  sid: 0,
-};
+        return args;
+      },
+    })
+  );
 
-export const hashToken = (token: Token) =>
-  new Promise<HashedData>((resolve) => {
-    const context: CompatibleContext = {
-      initData: Object.freeze<InitData>({
-        ...baseInit(),
-        coreDataBin: false,
-        resolve: (hashed) => resolve(JSON.parse(hashed)),
-        async generateToken() {
-          return JSON.stringify(token);
-        },
-        TextDecoder: class extends TextDecoder {
-          decode(buffer: BufferSource | undefined) {
-            const decoded = super.decode(buffer);
+const token = await (
+  await fetch("https://matchmaker.krunker.io/generate-token")
+).arrayBuffer();
 
-            if (
-              decoded ===
-              "return new Function('WP_fetchMMToken',new TextDecoder().decode(new Uint8Array(arg)))(token)"
-            ) {
-              return "return token.then(data => window.resolve(JSON.stringify(data))), () => {}";
-            }
+console.time("Hashing");
+const butFoundHash = await hashToken(token);
+console.timeEnd("Hashing");
 
-            return decoded;
-          }
-        },
-      }),
-    };
+const butFoundHashArray = new Uint8Array(
+  butFoundHash.split("").map((e) => e.charCodeAt(0))
+);
 
-    createContext(context);
-    initScript.runInContext(context);
-    loaderScript.runInContext(context);
-    executeDefaultScript.runInContext(context);
-  });
+console.log("butFoundHash", butFoundHashArray);
 
-export const game = () =>
-  new Promise<string>((resolve) => {
-    const context: CompatibleContext = {
-      initData: Object.freeze<InitData>({
-        ...baseInit(),
-        resolve: (script) => resolve(script),
-        async generateToken() {
-          return JSON.stringify(dummyToken);
-        },
-        TextDecoder: class extends TextDecoder {
-          decode(buffer: BufferSource | undefined) {
-            const decoded = super.decode(buffer);
+const r = await fetch(
+  `https://matchmaker.krunker.io/seek-game?${new URLSearchParams({
+    hostname: "krunker.io",
+    region: "us-nj",
+    autoChangeGame: "false",
+    validationToken: butFoundHash
+      .split("")
+      .map((argInstantPlease) =>
+        String.fromCharCode(argInstantPlease.charCodeAt(0) - 10)
+      )
+      .join(""),
+    dataQuery: JSON.stringify({ v: "dqk8nbmX7Juu0f4b62wtlwM6pw8ytLHG" }),
+  })}`,
+  {
+    headers: {
+      accept: "*/*",
+      "accept-encoding": "gzip, deflate, br",
+      "accept-language": "en-US,en;q=0.6;",
+      "cache-control": "no-cache",
+      origin: "https://krunker.io",
+      pragma: "no-cache",
+      referer: "https://krunker.io/",
+      "sec-ch-ua": '"Chromium";v="111", "Not(A:Brand";v="8"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Linux"',
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-site",
+      "user-agent":
+        "Mozilla/5.0 (X11; Fedora; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+    },
+  }
+);
 
-            if (
-              decoded ===
-              "return new Function('WP_fetchMMToken',new TextDecoder().decode(new Uint8Array(arg)))(token)"
-            ) {
-              return "return window.resolve(new TextDecoder().decode(new Uint8Array(arg))), () => {}";
-            }
+if (r.status == 520) throw new Error("Hash is poisoned");
 
-            return decoded;
-          }
-        },
-      }),
-    };
-
-    createContext(context);
-    initScript.runInContext(context);
-    loaderScript.runInContext(context);
-    executeDefaultScript.runInContext(context);
-  });
+console.log("Response from seek-game:", r.status, await r.json());

@@ -1,2 +1,3 @@
-/bin
+/bin/game*
+/bin/loader.mjs
 /dist

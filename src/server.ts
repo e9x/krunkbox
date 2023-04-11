@@ -1,4 +1,4 @@
-import type { Token, HashedData } from "./env.js";
+import type { HashedData } from "./env.js";
 import test from "./test.js";
 import updateBin from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
@@ -14,24 +14,28 @@ expand(config());
 
 export interface ContextWorker extends Piscina {
   run(task: undefined, runOptions: { name: "game" }): Promise<string>;
-  run(task: Token, runOptions: { name: "hashToken" }): Promise<HashedData>;
+  run(
+    task: ArrayBuffer,
+    runOptions: { name: "hashToken" }
+  ): Promise<HashedData>;
 }
 
-export interface ParseWorker extends Piscina {
+/*export interface ParseWorker extends Piscina {
   run(task: string, runOptions: { name: "parse" }): Promise<void>;
 }
 
 const parse: ParseWorker = new Piscina({
   maxThreads: 1,
   filename: new URL("./parseWorker.js", import.meta.url).toString(),
-});
+});*/
 
 let context: ContextWorker | undefined;
 
 async function parseGame() {
-  await parse.run(await context!.run(undefined, { name: "game" }), {
+  /*await parse.run(await context!.run(undefined, { name: "game" }), {
     name: "parse",
-  });
+  });*/
+  console.log("parse game later");
 }
 
 async function updateContext() {
@@ -43,6 +47,8 @@ async function updateContext() {
     updated["loader wasm"] ||
     !context
   ) {
+    console.log("update!! !");
+
     if (context) context.destroy();
 
     context = new Piscina({
@@ -110,20 +116,11 @@ server.route({
 server.route({
   method: "POST",
   url: "/hashToken",
-  schema: {
-    body: {
-      type: "object",
-      properties: {
-        token: { type: "string" },
-        sid: { type: "number" },
-        cfid: { type: "number" },
-      },
-    },
-  },
   async handler(request, reply) {
-    reply.send(
-      await context?.run(request.body as Token, { name: "hashToken" })
-    );
+    if (!Buffer.isBuffer(request.body))
+      return reply.status(400).send("bad body");
+
+    reply.send(await context?.run(request.body.buffer, { name: "hashToken" }));
   },
 });
 
