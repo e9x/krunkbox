@@ -24,6 +24,15 @@ const parse: ParseWorker = new Piscina({
 
 let context: ContextWorker | undefined;
 
+async function createContext() {
+  if (context) await context.destroy();
+
+  context = new Piscina({
+    maxThreads: 1, // DEBUG
+    filename: new URL("./contextWorker.js", import.meta.url).toString(),
+  });
+}
+
 async function parseGame() {
   if (!context) throw new Error("No context");
 
@@ -40,12 +49,7 @@ async function updateContext() {
   if (updated["core dat"] || updated["loader js"] || updated["loader wasm"]) {
     console.log("Updated");
 
-    if (context) await context.destroy();
-
-    context = new Piscina({
-      maxThreads: 1, // DEBUG
-      filename: new URL("./contextWorker.js", import.meta.url).toString(),
-    });
+    await createContext();
 
     if (updated["core dat"]) {
       try {
@@ -57,8 +61,9 @@ async function updateContext() {
       await parseGame();
     }
 
-    test(context);
+    test(context!);
   } else {
+    if (!context) await createContext();
     console.log("Up-to-date");
   }
 }
@@ -67,7 +72,7 @@ updateContext();
 
 setInterval(updateContext, 60e3 * 60 * 6);
 
-const server = fastify();
+const server = fastify({ logger: { level: "error" } });
 
 server.register(fastifyStatic, {
   root: fileURLToPath(new URL("../bin/", import.meta.url)),
@@ -76,24 +81,60 @@ server.register(fastifyStatic, {
 
 server.register(fastifyCors);
 
-server.route({
-  method: "GET",
-  url: "/source",
-  handler(_request, reply) {
-    reply.sendFile("game.min.js");
-  },
+server.get("/source", (_request, reply) => {
+  reply.sendFile("game.min.js");
 });
 
-server.route({
-  method: "POST",
-  url: "/hashToken",
-  async handler(request, reply) {
-    if (!Buffer.isBuffer(request.body))
-      return reply.status(400).send("bad body");
+async function validToken(token: string) {
+  const res = await fetch(`https://redirect-api.work.ink/tokenValid/${token}`);
+  if (!res.ok) throw new Error(`Not OK: ${res.status}`);
+  const body = (await res.json()) as { valid: boolean };
+  return body.valid;
+}
 
-    reply.send(await context?.run(request.body.buffer, { name: "hashToken" }));
+server.post(
+  "/hash",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+      headers: {
+        type: "object",
+        required: ["x-token"],
+        properties: {
+          "x-token": { type: "string" },
+        },
+      },
+    },
   },
-});
+  async (request, reply) => {
+    if (!(await validToken(request.headers["x-token"] as string)))
+      return reply.status(402).send();
+    if (!context) return reply.status(425).send();
+    const hashed = await context.run(
+      new TextEncoder().encode(request.body as string),
+      {
+        name: "hashToken",
+      }
+    );
+    reply.send(hashed);
+  }
+);
+
+server.post(
+  "/valid",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+    },
+  },
+  async (request, reply) => {
+    reply.status((await validToken(request.body as string)) ? 204 : 402).send();
+  }
+);
 
 server.listen(
   {
