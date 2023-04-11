@@ -1,14 +1,12 @@
-import once from "@tootallnate/once";
-import type { PathLike, WriteStream } from "node:fs";
-import { createWriteStream } from "node:fs";
+import type { PathLike } from "node:fs";
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { ReadableWebToNodeStream } from "readable-web-to-node-stream";
 import { rimraf } from "rimraf";
 
-export const loaderScriptPath = new URL("../bin/loader.mjs", import.meta.url);
-export const loaderWasmPath = new URL("../bin/loader.wasm", import.meta.url);
-export const coreDir = new URL("../bin/cores/", import.meta.url);
+export const binDir = new URL("../bin/", import.meta.url);
+export const loaderScriptPath = new URL("./loader.mjs", binDir);
+export const loaderWasmPath = new URL("./loader.wasm", binDir);
+export const coreDir = new URL("./cores/", binDir);
 
 interface LoaderResource {
   alias: "loader js" | "loader wasm";
@@ -32,33 +30,30 @@ const resources: LoaderResource[] = [
 type Updated = Record<LoaderResource["alias"] | "core dat", boolean>;
 
 async function testLoaders(updated: Partial<Updated>) {
-  const writeStreams: WriteStream[] = [];
+  await Promise.all(
+    resources.map(async (resource) => {
+      const res = await fetch(resource.url);
 
-  for (const res of resources) {
-    const response = await fetch(res.url);
-    if (!response.ok || !response.body)
-      throw new Error(`Fatal error: Cannot fetch ${res.url}`);
+      if (!res.ok || !res.body)
+        throw new Error(`Fatal error: Cannot fetch ${res.url}`);
 
-    try {
-      const stats = await stat(res.path);
-      const header = response.headers.get("last-modified");
-      if (!header) throw new Error(`Bad last-modified: ${header}`);
+      try {
+        const stats = await stat(resource.path);
+        const header = res.headers.get("last-modified");
+        if (!header) throw new Error(`Bad last-modified: ${header}`);
 
-      const lastModified = new Date(header);
+        const lastModified = new Date(header);
 
-      if (lastModified.getTime() <= stats.mtimeMs) continue;
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
-    }
+        if (lastModified.getTime() <= stats.mtimeMs) return;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+      }
 
-    updated[res.alias] = true;
+      updated[resource.alias] = true;
 
-    const writeStream = createWriteStream(res.path);
-    new ReadableWebToNodeStream(response.body).pipe(writeStream);
-    writeStreams.push(writeStream);
-  }
-
-  for (const writeStream of writeStreams) await once(writeStream, "end");
+      await writeFile(resource.path, Buffer.from(await res.arrayBuffer()));
+    })
+  );
 }
 
 const coreHeaders = {
@@ -142,11 +137,17 @@ async function testCoreDat(updated: Partial<Updated>) {
       })()
     );
 
-  await Promise.all(promises);
+  await Promise.all(promises).catch(console.error);
 }
 
 export default async function updateBin() {
   const updated: Partial<Updated> = {};
+
+  try {
+    await mkdir(binDir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
+  }
 
   await testLoaders(updated);
   await testCoreDat(updated);

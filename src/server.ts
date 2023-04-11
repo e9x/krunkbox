@@ -1,6 +1,6 @@
 import { PORT } from "./env.js";
 import test from "./test.js";
-import updateBin from "./updateBin.js";
+import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import fastify from "fastify";
@@ -53,7 +53,7 @@ async function updateContext() {
 
     if (updated["core dat"]) {
       try {
-        await unlink(new URL("../bin/game.min.js", import.meta.url));
+        await unlink(new URL("./game.min.js", binDir));
       } catch (err) {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
@@ -75,7 +75,7 @@ setInterval(updateContext, 60e3 * 60 * 6);
 const server = fastify({ logger: { level: "error" } });
 
 server.register(fastifyStatic, {
-  root: fileURLToPath(new URL("../bin/", import.meta.url)),
+  root: fileURLToPath(binDir),
   serve: false,
 });
 

@@ -1,12 +1,10 @@
 /* eslint-disable no-async-promise-executor */
 import "source-map-support/register.js";
 import type * as SandboxModule from "./sandbox.js";
+import { coreDir, loaderWasmPath } from "./updateBin.js";
 import { readdir, readFile } from "node:fs/promises";
 import type { Module, SourceTextModuleOptions } from "node:vm";
 import { createContext, Script, SourceTextModule } from "node:vm";
-
-const loaderWasmPath = new URL("../bin/loader.wasm", import.meta.url);
-const coreDir = new URL("../bin/cores/", import.meta.url);
 
 const coreDataBin: ArrayBuffer[] = await Promise.all(
   (
