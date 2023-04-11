@@ -108,7 +108,7 @@ async function testCoreDat(updated: Partial<Updated>) {
 
     const mtimeMs = new Date(lastModified).getTime();
 
-    if (splitCores + 1 >= coreData.length || coreData[splitCores] < mtimeMs) {
+    if (splitCores + 1 > coreData.length || coreData[splitCores] < mtimeMs) {
       didUpdate = true;
     }
 
