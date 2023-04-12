@@ -1,11 +1,15 @@
+import "source-map-support/register.js";
+import db from "./db.js";
 import { PORT } from "./env.js";
 import test from "./test.js";
 import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
+import type { FastifyRequest } from "fastify";
 import fastify from "fastify";
 import { access, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import pg from "pg";
 import Piscina from "piscina";
 
 export interface ContextWorker extends Piscina {
@@ -87,18 +91,106 @@ server.register(fastifyStatic, {
   serve: false,
 });
 
-server.register(fastifyCors);
+server.register(fastifyCors, {
+  allowedHeaders: ["x-token"],
+  exposedHeaders: ["x-token"],
+});
 
 server.get("/source", (_request, reply) => {
   reply.sendFile("game.min.js");
 });
 
-async function validToken(token: string) {
+interface ImportantData {
+  ipAddress: string;
+  userAgent: string;
+}
+
+function getImportantData(request: FastifyRequest): ImportantData {
+  return {
+    ipAddress: request.headers["cf-connecting-ip"]?.toString() || request.ip,
+    userAgent: request.headers["user-agent"]?.toString() || "",
+  };
+}
+
+enum WorkInkError {
+  DuplicateToken,
+}
+
+async function processWorkInk(token: string, importantData: ImportantData) {
+  if (!token) return;
+
   const res = await fetch(`https://redirect-api.work.ink/tokenValid/${token}`);
   if (!res.ok) throw new Error(`Not OK: ${res.status}`);
   const body = (await res.json()) as { valid: boolean };
-  return body.valid;
+
+  if (!body.valid) return;
+
+  try {
+    const {
+      rows: [{ current_token }],
+    } = await db.query<{ current_token: string }>(
+      `INSERT INTO token_data (workink_token, ip_address) VALUES ($1, $2) RETURNING current_token;`,
+      [token, importantData.ipAddress]
+    );
+
+    return current_token;
+  } catch (err) {
+    if (
+      err instanceof pg.DatabaseError &&
+      err.constraint === "token_data_workink_token_key"
+    )
+      return WorkInkError.DuplicateToken;
+    else throw err;
+  }
 }
+
+/**
+ * Validate a token, increment it, and regenerate the value
+ * @returns The new token
+ */
+async function getToken(xToken: string, importantData: ImportantData) {
+  // Allow the previous token or current token to be specified.
+  // Either way, it's expected that the new token is used.
+  // However, the client probably didn't save the current_token which is now previous_token, so they can't use previous_token anymore
+  // Unfortunate
+
+  // Increment the uses
+  // Set the previous token to the current token
+  // Set the current token to a random base64 value
+  const {
+    rows: [found],
+  } = await db.query<{ current_token: string }>(
+    "WITH updated AS (UPDATE token_data SET previous_token = current_token, current_token = encode(gen_random_bytes(16), 'base64'), uses = uses + 1 WHERE previous_token = $1 OR current_token = $1 AND ip_address = $2 RETURNING *) SELECT * FROM updated;",
+    [xToken, importantData.ipAddress]
+  );
+
+  if (!found) return;
+
+  return found.current_token;
+}
+
+// generate a token
+server.post(
+  "/hi",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+    },
+  },
+  async (request, reply) => {
+    const token = await processWorkInk(
+      request.body as string,
+      getImportantData(request)
+    );
+
+    if (token === WorkInkError.DuplicateToken) return reply.status(422).send();
+    else if (!token) return reply.status(402).send();
+
+    reply.send(token);
+  }
+);
 
 server.post(
   "/hash",
@@ -117,21 +209,31 @@ server.post(
     },
   },
   async (request, reply) => {
-    if (!(await validToken(request.headers["x-token"] as string)))
-      return reply.status(402).send();
     if (!context) return reply.status(425).send();
+
+    const newToken = await getToken(
+      request.headers["x-token"] as string,
+      getImportantData(request)
+    );
+
+    if (!newToken) return reply.status(402).send();
+
+    reply.header("x-token", newToken);
+
     const hashed = await context.run(
       new TextEncoder().encode(request.body as string),
       {
         name: "hashToken",
       }
     );
+
     reply.send(hashed);
   }
 );
 
+// Validate the token
 server.post(
-  "/valid",
+  "/me",
   {
     schema: {
       body: {
@@ -140,7 +242,12 @@ server.post(
     },
   },
   async (request, reply) => {
-    reply.status((await validToken(request.body as string)) ? 204 : 402).send();
+    const newToken = await getToken(
+      request.body as string,
+      getImportantData(request)
+    );
+    if (!newToken) reply.status(402).send();
+    return reply.send(newToken);
   }
 );
 
