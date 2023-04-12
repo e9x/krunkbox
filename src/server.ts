@@ -4,7 +4,7 @@ import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import fastify from "fastify";
-import { unlink } from "node:fs/promises";
+import { access, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 
@@ -14,7 +14,7 @@ export interface ContextWorker extends Piscina {
 }
 
 export interface ParseWorker extends Piscina {
-  run(task: string, runOptions: { name: "parse" }): Promise<void>;
+  run(task: string): Promise<void>;
 }
 
 const parse: ParseWorker = new Piscina({
@@ -36,9 +36,7 @@ async function createContext() {
 async function parseGame() {
   if (!context) throw new Error("No context");
 
-  await parse.run(await context.run(undefined, { name: "game" }), {
-    name: "parse",
-  });
+  await parse.run(await context.run(undefined, { name: "game" }));
 }
 
 async function updateContext() {
@@ -66,6 +64,15 @@ async function updateContext() {
     if (!context) await createContext();
     console.log("Up-to-date");
     test(context!);
+  }
+
+  try {
+    await access(new URL("./game.min.js", binDir));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+    // minify the source if we don't have it for some reason
+
+    await parseGame();
   }
 }
 
