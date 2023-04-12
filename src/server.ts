@@ -1,10 +1,12 @@
 import "source-map-support/register.js";
 import db from "./db.js";
 import { PORT } from "./env.js";
+import { tokenValid } from "./purgeTokens.js";
 import test from "./test.js";
 import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
+import AsyncExitHook from "async-exit-hook";
 import type { FastifyRequest } from "fastify";
 import fastify from "fastify";
 import { access, unlink } from "node:fs/promises";
@@ -166,6 +168,9 @@ async function getToken(xToken: string, importantData: ImportantData) {
 
   if (!found) return;
 
+  // expect it to be deleted soon
+  if (!(await tokenValid(found.current_token))) return;
+
   return found.current_token;
 }
 
@@ -263,3 +268,8 @@ server.listen(
     console.log("Live at", url);
   }
 );
+
+AsyncExitHook(async () => {
+  await server.close();
+  await db.end();
+});

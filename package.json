@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node --experimental-vm-modules ./dist/server.js",
+    "purge": "node ./dist/taskPurge.js",
     "build": "tsc",
     "build:watch": "tsc --watch"
   },
@@ -15,6 +16,7 @@
     "@fastify/cors": "^8.2.1",
     "@fastify/static": "^6.10.0",
     "@tdewolff/minify": "^2.12.5",
+    "async-exit-hook": "^2.0.1",
     "deobfuscator": "^2.4.2",
     "dotenv": "^16.0.3",
     "fastify": "^4.15.0",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",
+    "@types/async-exit-hook": "^2.0.0",
     "@types/node": "^18.15.11",
     "@types/pg": "^8.6.6",
     "@types/source-map-support": "^0.5.6",
