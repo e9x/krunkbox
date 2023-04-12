@@ -188,8 +188,7 @@
       await sleep(3e3);
     }
 
-    // IT SHOULD BE ABLE TO INFINITELY LOOP!
-    // hashed = gotHashed;
+    hashed = gotHashed;
   }
 
   const seekGame = await fetch(
