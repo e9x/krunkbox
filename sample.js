@@ -58,10 +58,8 @@
     }
     set token(value) {
       this.#token = value;
-      if (value === undefined) {
-        console.trace("Nuke token");
-        delete localStorage.sample_token;
-      } else localStorage.sample_token = value;
+      if (value === undefined) delete localStorage.sample_token;
+      else localStorage.sample_token = value;
     }
     /**
      *
@@ -83,11 +81,6 @@
 
       // x-token should be available if eg fastify crashes
       // but if we don't get x-token, just don't change it
-      console.log(
-        "Got nmew token:",
-        res.headers.get("x-token"),
-        Object.fromEntries(res.headers)
-      );
       this.token = res.headers.get("x-token") || this.token;
 
       if (!res.ok) throw new Error("Unknown error");
