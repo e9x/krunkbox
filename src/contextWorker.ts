@@ -149,14 +149,15 @@ export const game = () =>
         newFunction: (args) => {
           if (argsIsSource(args)) {
             let source = args[1];
-            args[1] = ``;
+            args[1] = "";
 
             const renamed = env.getRenamed();
 
-            for (const key in renamed)
-              source = source.replaceAll(key, renamed[key]);
+            renamed.WP_MMToken = args[0];
 
-            source = source.replaceAll(args[0], "WP_MMToken");
+            source = `${Object.entries(renamed)
+              .map(([name, src]) => `window.${src}=${name}`)
+              .join(";")};${source}`;
 
             resolve(source);
           }
