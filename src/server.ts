@@ -73,6 +73,7 @@ async function updateContext() {
   }
 
   try {
+    await access(new URL("./game.debug.js", binDir));
     await access(new URL("./game.min.js", binDir));
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
