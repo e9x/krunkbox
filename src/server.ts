@@ -155,7 +155,11 @@ async function processWorkInk(token: string, importantData: ImportantData) {
  * Validate a token, increment it, and regenerate the value
  * @returns The new token
  */
-async function getToken(xToken: string, importantData: ImportantData) {
+async function getToken(
+  xToken: string,
+  importantData: ImportantData,
+  incrementUses = false
+) {
   // Allow the previous token or current token to be specified.
   // Either way, it's expected that the new token is used.
   // However, the client probably didn't save the current_token which is now previous_token, so they can't use previous_token anymore
@@ -167,8 +171,8 @@ async function getToken(xToken: string, importantData: ImportantData) {
   const {
     rows: [found],
   } = await db.query<{ current_token: string }>(
-    "WITH updated AS (UPDATE token_data SET previous_token = current_token, current_token = encode(gen_random_bytes(16), 'base64'), uses = uses + 1 WHERE previous_token = $1 OR current_token = $1 AND ip_address = $2 RETURNING *) SELECT * FROM updated;",
-    [xToken, importantData.ipAddress]
+    "WITH updated AS (UPDATE token_data SET previous_token = current_token, current_token = encode(gen_random_bytes(16), 'base64'), uses = uses + $1 WHERE (previous_token = $2 OR current_token = $2) AND ip_address = $3 RETURNING *) SELECT * FROM updated;",
+    [incrementUses ? 1 : 0, xToken, importantData.ipAddress]
   );
 
   if (!found) return;
@@ -223,7 +227,8 @@ server.post(
 
     const newToken = await getToken(
       request.headers["x-token"] as string,
-      getImportantData(request)
+      getImportantData(request),
+      true
     );
 
     if (!newToken) return reply.status(402).send();
