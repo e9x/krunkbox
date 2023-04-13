@@ -65,22 +65,44 @@
     if (token === APIError.BadToken || source === APIError.BadToken)
       throw new Error("Bad token!");
 
+    const dataArg = "_" + Math.random().toString(36).slice(2);
+
     try {
-      /**
-       * @type {(WP_MMToken: string) => void}
-       */
-      const game = new Function("WP_MMToken", source);
+      const { src, data } = hook(dataArg, source);
 
       /**
-       * @type {() => void}
+       * @type {(WP_MMToken: string, dataArg: typeof data) => void}
        */
-      const bound = game.bind(window, token);
+      const game = new Function("WP_MMToken", dataArg, src);
 
-      return bound;
+      return () => game(token, data);
     } catch (err) {
       console.error("Failure loading...", { source });
       throw err;
     }
+  }
+
+  /**
+   *
+   * @param {string} dataArg
+   * @param {string} src
+   * @returns
+   */
+  function hook(dataArg, src) {
+    // hook __webpack_require__, specifically the part where it returns module.exports and when it's generating the exports, not caching it
+    // the hook is ran once per module
+    src = src.replace(
+      /,(\w+)\.l=!!\[],\1\.exports}/,
+      (match, module) => `,${module}.l=true,${dataArg}(${module})}`
+    );
+
+    return {
+      data: (module) => {
+        console.log(module);
+        return module.exports;
+      },
+      src,
+    };
   }
 
   /**
