@@ -19,73 +19,117 @@
 /* eslint-env es6 */
 /* eslint: eslint:recommended */
 /* globals GM_xmlhttpRequest, GM_deleteValue, GM_getValue, GM_setValue, GM_openInTab */
+/* eslint-disable no-constant-condition */
 
 // TODO: use GM storage instead of localStorage
 (() => {
   "use strict";
 
-  async function main() {
+  function main() {
+    const gamePromise = getGame();
+
+    waitForGameLoad().then(() => {
+      gamePromise.then((load) => {
+        load();
+      });
+    });
+  }
+
+  async function getGame() {
     /**
      * @type {API|undefined}
      */
     let api;
+
+    const savedToken = GM_getValue("token");
+
+    if (savedToken) api = new API(savedToken);
 
     while (!api) {
       const apiToken = await getToken(workInkURL);
 
       if (!apiToken) return; // aborted
 
-      try {
-        api = new API(apiToken);
-        if (!(await api.valid())) api = undefined;
-      } catch (err) {
-        // server error, try again in some
-        console.log("Server error, trying again in 3s");
-        await sleep(3e3);
+      api = new API(apiToken);
+      if (!(await api.valid())) {
+        console.log("API was invalid when using", apiToken);
+        api = undefined;
       }
     }
 
+    const [token, source] = await Promise.all([
+      fetchToken(api),
+      api.source(api),
+    ]);
+
+    if (token === APIError.BadToken || source === APIError.BadToken)
+      throw new Error("Bad token!");
+
+    try {
+      /**
+       * @type {(WP_MMToken: string) => void}
+       */
+      const game = new Function("WP_MMToken", source);
+
+      /**
+       * @type {() => void}
+       */
+      const bound = game.bind(window, token);
+
+      return bound;
+    } catch (err) {
+      console.error("Failure loading...", { source });
+      throw err;
+    }
+  }
+
+  /**
+   *
+   * @param {API} api
+   */
+  async function fetchToken(api) {
     const token = await (
       await fetch("https://matchmaker.krunker.io/generate-token")
     ).arrayBuffer();
 
-    /**
-     * @type {string|undefined}
-     */
-    let hashed;
+    return await api.hash(token);
+  }
 
-    while (!hashed) {
-      const gotHashed = await api.hash(token);
+  /**
+   *
+   * @returns {Promise<void>}
+   */
+  function waitForGameLoad() {
+    return new Promise((resolve) => {
+      var observer = new MutationObserver((mutations, observer) => {
+        for (let mutation of mutations) {
+          for (let node of mutation.addedNodes) {
+            if (
+              node.tagName == "SCRIPT" &&
+              node.textContent.includes("Yendis Entertainment")
+            ) {
+              console.info("Got the WASM loader script:", node);
 
-      // this shouldn't happen
-      if (gotHashed === APIError.BadToken) throw new Error("Bad token!");
+              // Clear the script's textContent to prevent loading.
+              node.textContent = "";
 
-      if (gotHashed === APIError.Early) {
-        console.log("Too early, trying again in 3s");
-        await sleep(3e3);
-      }
+              console.info("WASM loader removed");
 
-      hashed = gotHashed;
-    }
+              // Resolve the promise to indicate the game is ready to load.
+              resolve();
 
-    const seekGame = await fetch(
-      `https://matchmaker.krunker.io/seek-game?${new URLSearchParams({
-        hostname: "krunker.io",
-        region: "de-fra",
-        autoChangeGame: "false",
-        validationToken: hashed
-          .split("")
-          .map((c) => String.fromCharCode(c.charCodeAt(0) - 10))
-          .join(""),
-        dataQuery: JSON.stringify({ v: "5pliwbJakrvPpOnR5pA5V7dPpSeq8f28" }),
-      })}`
-    );
+              // The observer no longer needs to check for new elements because the WASM loading has been stopped.
+              observer.disconnect();
+            }
+          }
+        }
+      });
 
-    console.log(
-      "Response from seek-game:",
-      seekGame.status,
-      await seekGame.json().catch(() => Symbol("INVALID JSON"))
-    );
+      observer.observe(document, {
+        childList: true,
+        subtree: true,
+      });
+    });
   }
 
   const apiURL = "http://[::1]:3001/";
@@ -106,7 +150,6 @@
    */
   const APIError = {
     BadToken: 0,
-    Early: 1,
   };
 
   /**
@@ -122,7 +165,7 @@
    * @property {string} statusText
    * @property {boolean} ok
    * @property {Headers} headers
-   * @property {() => Promise<text>} text
+   * @property {() => Promise<string>} text
    */
 
   /**
@@ -131,7 +174,8 @@
    * @param {GMFetchOptions} [opts]
    * @returns {Promise<GMFetchResponse>}
    */
-  function gmFetch(url, opts) {
+  function gmFetch(url, opts = {}) {
+    // return fetch(url, opts);
     return new Promise((resolve, reject) =>
       GM_xmlhttpRequest({
         url,
@@ -169,22 +213,27 @@
      * @param {string} token
      */
     static async processWorkInk(token) {
-      const res = await gmFetch(new URL("hi", apiURL).toString(), {
-        method: "POST",
-        body: token,
-        headers: {
-          "content-type": "text/plain",
-        },
-      });
+      while (true) {
+        const res = await gmFetch(new URL("hi", apiURL).toString(), {
+          method: "POST",
+          body: token,
+          headers: {
+            "content-type": "text/plain",
+          },
+        });
 
-      console.log(res);
+        if (res.status === 402) return WorkInkErrors.BadToken;
+        if (res.status === 422) return WorkInkErrors.DuplicateToken;
 
-      if (res.status === 402) return WorkInkErrors.BadToken;
-      if (res.status === 422) return WorkInkErrors.DuplicateToken;
+        if (!res.ok) {
+          // server error, try again in some
+          console.log("Server error, trying again in 3s");
+          await sleep(3e3);
+          continue;
+        }
 
-      if (!res.ok) throw new Error("Unknown error");
-
-      return await res.text();
+        return await res.text();
+      }
     }
     /**
      *
@@ -208,48 +257,83 @@
      * @param {string} token
      */
     async hash(token) {
-      const res = await gmFetch(new URL("hash", apiURL).toString(), {
-        method: "POST",
-        body: token,
-        headers: {
-          "x-token": this.token,
-          "content-type": "text/plain",
-        },
-      });
+      while (true) {
+        const res = await gmFetch(new URL("hash", apiURL).toString(), {
+          method: "POST",
+          body: token,
+          headers: {
+            "x-token": this.token,
+            "content-type": "text/plain",
+          },
+        });
 
-      if (res.status === 425) return APIError.Early;
-      if (res.status === 402) return APIError.BadToken;
+        if (res.status === 425) {
+          console.log("Too early, trying again in 3s");
+          await sleep(3e3);
+          continue;
+        }
 
-      // x-token should be available if eg fastify crashes
-      // but if we don't get x-token, just don't change it
-      this.token = res.headers.get("x-token") || this.token;
+        if (res.status === 402) return APIError.BadToken;
 
-      if (!res.ok) throw new Error("Unknown error");
+        // x-token should be available if eg fastify crashes
+        // but if we don't get x-token, just don't change it
+        this.token = res.headers.get("x-token") || this.token;
 
-      return await res.text();
+        if (!res.ok) throw new Error("Unknown error");
+
+        return await res.text();
+      }
     }
     /**
      * Validates the token. Should be called before making any requests to Krunker's matchmaker
      */
     async valid() {
-      const res = await gmFetch(new URL("me", apiURL), {
-        method: "POST",
-        body: this.token,
-        headers: {
-          "content-type": "text/plain",
-        },
-      });
+      while (true) {
+        const res = await gmFetch(new URL("me", apiURL), {
+          method: "POST",
+          body: this.token,
+          headers: {
+            "content-type": "text/plain",
+          },
+        });
 
-      if (res.status === 402) {
-        this.token = undefined;
-        return false;
+        if (res.status === 402) {
+          this.token = undefined;
+          return false;
+        }
+
+        if (!res.ok) {
+          // server error, try again in some
+          console.log("Server error, trying again in 3s");
+          await sleep(3e3);
+          continue;
+        }
+
+        this.token = await res.text();
+
+        return true;
       }
+    }
+    async source() {
+      while (true) {
+        const res = await gmFetch(new URL("source", apiURL));
 
-      if (!res.ok) throw new Error("Unknown error");
+        // has not been minified/processed yet
+        if (res.status === 404) {
+          console.log("Too early, trying again in 3s");
+          await sleep(3e3);
+          continue;
+        }
 
-      this.token = await res.text();
+        if (!res.ok) {
+          // server error, try again in some
+          console.log("Server error, trying again in 3s");
+          await sleep(3e3);
+          continue;
+        }
 
-      return true;
+        return await res.text();
+      }
     }
   }
 
@@ -261,9 +345,10 @@
     /**
      * @type {string|undefined}
      */
-    let token = GM_getValue("token");
+    let token;
 
     while (!token) {
+      console.log("hbecause thius is retarded heres the token", { token });
       GM_openInTab(workInk);
       console.trace("Prompt for access key...");
       const key = prompt("Enter access key here");
@@ -276,6 +361,7 @@
       else {
         console.log("Got token:", res);
         token = res;
+        break;
       }
     }
 
