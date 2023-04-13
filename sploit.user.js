@@ -21,7 +21,6 @@
 /* globals GM_xmlhttpRequest, GM_deleteValue, GM_getValue, GM_setValue, GM_openInTab */
 /* eslint-disable no-constant-condition */
 
-// TODO: use GM storage instead of localStorage
 (() => {
   "use strict";
 
