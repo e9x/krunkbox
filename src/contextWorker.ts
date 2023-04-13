@@ -118,6 +118,13 @@ const baseInit = (): SandboxModule.InitData => ({
   contentWindow: getThis.runInNewContext(),
 });
 
+function argsIsSource(args: string[]) {
+  return (
+    args.length === 2 &&
+    (args[1].startsWith("\nfunction ") || args[1].startsWith("\n(function"))
+  );
+}
+
 export const hashToken = (token: ArrayBuffer) =>
   new Promise<string>((resolve, reject) =>
     execute({
@@ -125,9 +132,7 @@ export const hashToken = (token: ArrayBuffer) =>
       resolve: (hashed: string) => resolve(hashed),
       generateToken: () => token,
       newFunction: (args) => {
-        // console.log(args);
-        if (args.length === 2 && args[1].startsWith("\nfunction "))
-          args[1] = `window.resolve(${args[0]})`;
+        if (argsIsSource(args)) args[1] = `window.resolve(${args[0]})`;
 
         return args;
       },
@@ -142,7 +147,7 @@ export const game = () =>
         generateToken: () =>
           new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24]).buffer,
         newFunction: (args) => {
-          if (args.length === 2 && args[1].startsWith("\nfunction ")) {
+          if (argsIsSource(args)) {
             let source = args[1];
             args[1] = ``;
 
