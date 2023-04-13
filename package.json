@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node --experimental-vm-modules ./dist/server.js",
+    "testctxw": "node --experimental-vm-modules ./dist/testContextWorker.js",
     "purge": "node ./dist/taskPurge.js",
     "build": "tsc",
     "build:watch": "tsc --watch"
