@@ -1,6 +1,6 @@
 import "source-map-support/register.js";
 import db from "./db.js";
-import { PORT } from "./env.js";
+import { DEVELOPMENT, PORT } from "./env.js";
 import { tokenValid } from "./purgeTokens.js";
 import test from "./test.js";
 import updateBin, { binDir } from "./updateBin.js";
@@ -117,15 +117,19 @@ function getImportantData(request: FastifyRequest): ImportantData {
 enum WorkInkError {
   DuplicateToken,
 }
-
-async function processWorkInk(token: string, importantData: ImportantData) {
-  if (!token) return;
+async function validWorkInkToken(token: string) {
+  if (!token) return false;
+  if (DEVELOPMENT && token === "DEBUG") return true;
 
   const res = await fetch(`https://redirect-api.work.ink/tokenValid/${token}`);
   if (!res.ok) throw new Error(`Not OK: ${res.status}`);
   const body = (await res.json()) as { valid: boolean };
 
-  if (!body.valid) return;
+  return body.valid;
+}
+
+async function processWorkInk(token: string, importantData: ImportantData) {
+  if (!(await validWorkInkToken(token))) return;
 
   try {
     const {

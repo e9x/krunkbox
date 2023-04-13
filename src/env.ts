@@ -10,3 +10,5 @@ if (!PG_URL) throw new TypeError("Invalid PG_URL");
 
 export const WORKINK_API = process.env.WORKINK_API || "";
 if (!WORKINK_API) throw new TypeError("Invalid WORKINK_API");
+
+export const DEVELOPMENT = process.env.NODE_ENV !== "production";
