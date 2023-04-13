@@ -1,6 +1,6 @@
 import { binDir } from "./updateBin.js";
-import { string } from "@tdewolff/minify";
 import { Deobfuscator } from "deobfuscator";
+import esbuild from "esbuild";
 import { writeFile } from "node:fs/promises";
 
 export default async function parseGame(gameScript: string) {
@@ -19,8 +19,15 @@ export default async function parseGame(gameScript: string) {
   console.timeEnd("Deobfuscate");
 
   console.time("Minify");
-  const minified = string("application/javascript", deobfuscated);
+  const minified = await esbuild.transform(deobfuscated, {
+    minify: true,
+    sourcemap: false,
+    legalComments: "none",
+    treeShaking: true,
+  });
   console.timeEnd("Minify");
 
-  await writeFile(new URL("./game.min.js", binDir), minified);
+  new Function(deobfuscated);
+
+  await writeFile(new URL("./game.min.js", binDir), minified.code);
 }

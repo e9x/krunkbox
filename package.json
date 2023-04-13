@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node --experimental-vm-modules ./dist/server.js",
     "testctxw": "node --experimental-vm-modules ./dist/testContextWorker.js",
+    "testparse": "node ./dist/testParse.js",
     "purge": "node ./dist/taskPurge.js",
     "build": "tsc",
     "build:watch": "tsc --watch"
@@ -16,10 +17,10 @@
   "dependencies": {
     "@fastify/cors": "^8.2.1",
     "@fastify/static": "^6.10.0",
-    "@tdewolff/minify": "^2.12.5",
     "async-exit-hook": "^2.0.1",
     "deobfuscator": "^2.4.2",
     "dotenv": "^16.0.3",
+    "esbuild": "^0.17.16",
     "fastify": "^4.15.0",
     "pg": "^8.10.0",
     "piscina": "^3.2.0",
