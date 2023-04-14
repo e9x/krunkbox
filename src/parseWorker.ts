@@ -30,4 +30,15 @@ export default async function parseGame(gameScript: string) {
   new Function(deobfuscated);
 
   await writeFile(new URL("./game.min.js", binDir), minified.code);
+
+  const gameVersion =
+    (minified.code.match(/exports=JSON\.parse\('"(.*?)"'\)/) || [])[1] || "";
+
+  const vars = {
+    gameVersion,
+  };
+
+  console.log(vars);
+
+  await writeFile(new URL("./vars.json", binDir), JSON.stringify(vars));
 }
