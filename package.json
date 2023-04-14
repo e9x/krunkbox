@@ -10,7 +10,7 @@
     "testparse": "node ./dist/testParse.js",
     "purge": "node ./dist/taskPurge.js",
     "build": "tsc",
-    "build:watch": "tsc --watch"
+    "watch": "tsc --watch"
   },
   "type": "module",
   "license": "ISC",
