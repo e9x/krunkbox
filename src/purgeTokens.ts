@@ -12,7 +12,7 @@ export async function tokenValid(token: string) {
   const {
     rows: [found],
   } = await db.query(
-    "SELECT * FROM token_data WHERE current_token = $1 AND ((uses <= 30 AND created_at >= NOW() - INTERVAL '1 day') OR workink_token == 'DEBUG');",
+    "SELECT * FROM token_data WHERE current_token = $1 AND ((uses <= 30 AND created_at >= NOW() - INTERVAL '1 day') OR workink_token = 'DEBUG');",
     [token]
   );
 
