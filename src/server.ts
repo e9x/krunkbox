@@ -172,7 +172,7 @@ server.get(`/${userscriptName}`, (request, reply) => {
   const sketchScript = getSketchScript();
 
   // we should just try again ON THE SERVER because we can't just show users 425...
-  if (!sketchScript) return reply.status(425).send();
+  if (!sketchScript) return reply.status(404).send();
 
   reply.header(
     "content-disposition",
@@ -199,7 +199,7 @@ server.get(
   async (request, reply) => {
     const gameScript = getGameScript();
 
-    if (!gameScript) return reply.status(425).send();
+    if (!gameScript) return reply.status(404).send();
 
     if (
       !(await isTokenValid(
