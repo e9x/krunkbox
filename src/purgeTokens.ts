@@ -16,7 +16,5 @@ export async function tokenShouldPurge(token: string) {
     [token]
   );
 
-  console.log({ found });
-
   return !!found;
 }
