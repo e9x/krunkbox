@@ -1,10 +1,17 @@
+// Use memory as a cache layer
+// Save both the gameScript and sketchScript in memory as soon as they're accessible
 import { binDir } from "./updateBin.js";
 import { watch } from "chokidar";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-let sketchVersion: undefined | string;
+let sketchScript: undefined | string;
+let gameScript: undefined | string;
 
+let sketchVersion: undefined | string;
+let gameVersion: undefined | string;
+
+const gamePath = new URL("./game.min.js", binDir);
 export const userscriptName = "krunksketch.user.js";
 export const sketchPath = new URL(userscriptName, binDir);
 
@@ -12,18 +19,33 @@ export function getSketchVersion() {
   return sketchVersion;
 }
 
+export function getGameVersion() {
+  return gameVersion;
+}
+
+export function getSketchScript() {
+  return sketchScript;
+}
+
+export function getGameScript() {
+  return gameScript;
+}
+
 async function updateSketchData() {
+  sketchScript = undefined;
+
   try {
-    const script = await readFile(sketchPath, "utf-8");
+    sketchScript = await readFile(sketchPath, "utf-8");
 
-    const [, v] = script.match(/^\/\/ @version\s+(.*?)$/m) || [];
+    const [, matchSketchVersion] =
+      sketchScript.match(/^\/\/ @version\s+(.*?)$/m) || [];
 
-    if (!v) {
-      console.error("Failure finding version");
+    if (!matchSketchVersion) {
+      console.error("Failure finding sketch version");
       return;
     }
 
-    sketchVersion = v;
+    sketchVersion = matchSketchVersion;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     console.error("friendly error:", err);
@@ -33,7 +55,35 @@ async function updateSketchData() {
   }
 }
 
-// allow ending the watcher
-export const watcher = watch(fileURLToPath(sketchPath));
+async function updateGameData() {
+  gameScript = undefined;
 
-watcher.on("all", updateSketchData);
+  try {
+    gameScript = await readFile(gamePath, "utf-8");
+
+    const [, matchGameVersion] =
+      gameScript.match(/exports=JSON\.parse\('"(.*?)"'\)/) || [];
+
+    if (!matchGameVersion) {
+      console.error("Failure finding game version");
+      return;
+    }
+
+    gameVersion = matchGameVersion;
+
+    console.trace({ gameVersion });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    console.error("friendly error:", err);
+    console.log(`Cannot read ${gamePath}. Version information won't be shown`);
+  }
+}
+
+// export so we can ending the watcher
+export const sketchWatcher = watch(fileURLToPath(sketchPath));
+sketchWatcher.on("change", updateSketchData);
+updateSketchData();
+
+export const gameWatcher = watch(fileURLToPath(gamePath));
+gameWatcher.on("change", updateGameData);
+updateGameData();

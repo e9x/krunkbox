@@ -2,7 +2,15 @@ import "source-map-support/register.js";
 import db from "./db.js";
 import { DEVELOPMENT, PORT } from "./env.js";
 import { tokenShouldPurge } from "./purgeTokens.js";
-import { getSketchVersion, userscriptName, watcher } from "./sketchData.js";
+import {
+  getGameScript,
+  getGameVersion,
+  getSketchScript,
+  getSketchVersion,
+  userscriptName,
+  gameWatcher,
+  sketchWatcher,
+} from "./sketchData.js";
 import test from "./test.js";
 import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
@@ -114,7 +122,12 @@ server.post(
   {
     schema: {
       body: {
-        type: "string",
+        type: "object",
+        required: ["currentVersion", "currentGameVersion"],
+        properties: {
+          currentVersion: { type: "string" },
+          currentGameVersion: { type: "string" },
+        },
       },
       response: {
         200: {
@@ -122,6 +135,7 @@ server.post(
           required: ["outdated", "latestVersion", "updateURL"],
           properties: {
             outdated: { type: "boolean" },
+            sketchUpdated: { type: "boolean" },
             latestVersion: { type: "string" },
             updateURL: { type: "string" },
           },
@@ -130,14 +144,24 @@ server.post(
     },
   },
   (request, reply) => {
+    const body = request.body as {
+      currentVersion: string;
+      // we should probably source the current game version from the userscript
+      // no harm in trusting the client on this one though
+      currentGameVersion: string;
+    };
+
+    const gameVersion = getGameVersion();
+    if (!gameVersion) return reply.status(425).send();
     const sketchVersion = getSketchVersion();
     if (!sketchVersion) return reply.status(425).send();
-    const reqVersion = new SemVer(request.body as string);
+    const reqVersion = new SemVer(body.currentVersion);
     const myVersion = new SemVer(sketchVersion);
 
     reply.send({
       outdated: reqVersion.compare(myVersion) === -1,
       latestVersion: sketchVersion,
+      sketchUpdated: gameVersion === body.currentGameVersion,
       // client will interpret as relative to API url
       updateURL: `/${userscriptName}`,
     } as SketchVersion);
@@ -145,7 +169,18 @@ server.post(
 );
 
 server.get(`/${userscriptName}`, (request, reply) => {
-  reply.download(userscriptName);
+  const sketchScript = getSketchScript();
+
+  // we should just try again ON THE SERVER because we can't just show users 425...
+  if (!sketchScript) return reply.status(425).send();
+
+  reply.header(
+    "content-disposition",
+    `attachment; filename="${userscriptName}"`
+  );
+
+  reply.header("content-type", "application/javascript");
+  reply.send(sketchScript);
 });
 
 server.get(
@@ -162,6 +197,10 @@ server.get(
     },
   },
   async (request, reply) => {
+    const gameScript = getGameScript();
+
+    if (!gameScript) return reply.status(425).send();
+
     if (
       !(await isTokenValid(
         request.headers["x-token"] as string,
@@ -170,40 +209,8 @@ server.get(
     )
       return reply.status(402).send();
 
-    return reply.sendFile("game.min.js");
-  }
-);
-
-server.get(
-  "/vars",
-  {
-    schema: {
-      headers: {
-        type: "object",
-        required: ["x-token"],
-        properties: {
-          "x-token": { type: "string" },
-        },
-      },
-    },
-  },
-  async (request, reply) => {
-    if (
-      !(await isTokenValid(
-        request.headers["x-token"] as string,
-        getImportantData(request)
-      ))
-    )
-      return reply.status(402).send();
-
-    const newToken = await rotateToken(
-      request.headers["x-token"] as string,
-      getImportantData(request)
-    );
-
-    reply.header("x-token", newToken);
-
-    return reply.sendFile("vars.json");
+    reply.header("content-type", "application/javascript");
+    reply.send(gameScript);
   }
 );
 
@@ -405,5 +412,6 @@ server.listen(
 AsyncExitHook(async () => {
   await server.close();
   await db.end();
-  await watcher.close();
+  await gameWatcher.close();
+  await sketchWatcher.close();
 });
