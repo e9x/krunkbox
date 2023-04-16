@@ -29,7 +29,7 @@ export default async function parseGame(exp: ExportedGame) {
     deobfuscated = deobfuscated.replaceAll(exp.renamed[v], v);
 
   console.time("Minify");
-  const minified = await esbuild.transform(deobfuscated, {
+  let { code: minified } = await esbuild.transform(deobfuscated, {
     minify: true,
     sourcemap: false,
     legalComments: "none",
@@ -37,18 +37,14 @@ export default async function parseGame(exp: ExportedGame) {
   });
   console.timeEnd("Minify");
 
+  const [, , canBSeen] =
+    minified.match(/!(\w+)\.isYou&&\1\.objInstances\){if\(\1\.(\w+)\){/) || [];
+
+  console.log({ canBSeen });
+
+  minified = minified.replaceAll(canBSeen, "canBSeen");
+
   new Function(deobfuscated);
 
-  await writeFile(new URL("./game.min.js", binDir), minified.code);
-
-  const gameVersion =
-    (minified.code.match(/exports=JSON\.parse\('"(.*?)"'\)/) || [])[1] || "";
-
-  const vars = {
-    gameVersion,
-  };
-
-  console.log(vars);
-
-  await writeFile(new URL("./vars.json", binDir), JSON.stringify(vars));
+  await writeFile(new URL("./game.min.js", binDir), minified);
 }

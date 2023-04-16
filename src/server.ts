@@ -86,7 +86,6 @@ async function updateContext() {
   try {
     await access(new URL("./game.debug.js", binDir));
     await access(new URL("./game.min.js", binDir));
-    await access(new URL("./vars.json", binDir));
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
     // minify the source if we don't have it for some reason
