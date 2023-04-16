@@ -100,13 +100,64 @@ server.register(fastifyCors, {
   exposedHeaders: ["x-token"],
 });
 
-server.get("/source", (_request, reply) => {
-  reply.sendFile("game.min.js");
-});
+server.get(
+  "/source",
+  {
+    schema: {
+      headers: {
+        type: "object",
+        required: ["x-token"],
+        properties: {
+          "x-token": { type: "string" },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    if (
+      !(await isTokenValid(
+        request.headers["x-token"] as string,
+        getImportantData(request)
+      ))
+    )
+      return reply.status(402).send();
 
-server.get("/vars", (_request, reply) => {
-  reply.sendFile("vars.json");
-});
+    return reply.sendFile("game.min.js");
+  }
+);
+
+server.get(
+  "/vars",
+  {
+    schema: {
+      headers: {
+        type: "object",
+        required: ["x-token"],
+        properties: {
+          "x-token": { type: "string" },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    if (
+      !(await isTokenValid(
+        request.headers["x-token"] as string,
+        getImportantData(request)
+      ))
+    )
+      return reply.status(402).send();
+
+    const newToken = await rotateToken(
+      request.headers["x-token"] as string,
+      getImportantData(request)
+    );
+
+    reply.header("x-token", newToken);
+
+    return reply.sendFile("vars.json");
+  }
+);
 
 interface ImportantData {
   ipAddress: string;
