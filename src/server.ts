@@ -2,6 +2,7 @@ import "source-map-support/register.js";
 import db from "./db.js";
 import { DEVELOPMENT, PORT } from "./env.js";
 import { tokenShouldPurge } from "./purgeTokens.js";
+import { getSketchVersion, userscriptName, watcher } from "./sketchData.js";
 import test from "./test.js";
 import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
@@ -14,6 +15,7 @@ import { access, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import Piscina from "piscina";
+import { SemVer } from "semver";
 
 export interface ContextWorker extends Piscina {
   run(task: undefined, runOptions: { name: "game" }): Promise<ExportedGame>;
@@ -99,6 +101,51 @@ server.register(fastifyStatic, {
 server.register(fastifyCors, {
   allowedHeaders: ["x-token"],
   exposedHeaders: ["x-token"],
+});
+
+interface SketchVersion {
+  outdated: boolean;
+  latestVersion: string;
+  updateURL: string;
+}
+
+server.post(
+  "/sketchVersion",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+      response: {
+        200: {
+          type: "object",
+          required: ["outdated", "latestVersion", "updateURL"],
+          properties: {
+            outdated: { type: "boolean" },
+            latestVersion: { type: "string" },
+            updateURL: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  (request, reply) => {
+    const sketchVersion = getSketchVersion();
+    if (!sketchVersion) return reply.status(425).send();
+    const reqVersion = new SemVer(request.body as string);
+    const myVersion = new SemVer(sketchVersion);
+
+    reply.send({
+      outdated: reqVersion.compare(myVersion) === -1,
+      latestVersion: sketchVersion,
+      // client will interpret as relative to API url
+      updateURL: `/${userscriptName}`,
+    } as SketchVersion);
+  }
+);
+
+server.get(`/${userscriptName}`, (request, reply) => {
+  reply.download(userscriptName);
 });
 
 server.get(
@@ -358,4 +405,5 @@ server.listen(
 AsyncExitHook(async () => {
   await server.close();
   await db.end();
+  await watcher.close();
 });
