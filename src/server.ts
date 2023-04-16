@@ -1,7 +1,7 @@
 import "source-map-support/register.js";
 import db from "./db.js";
 import { DEVELOPMENT, PORT } from "./env.js";
-import { tokenValid } from "./purgeTokens.js";
+import { tokenShouldPurge } from "./purgeTokens.js";
 import test from "./test.js";
 import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
@@ -155,35 +155,43 @@ async function processWorkInk(token: string, importantData: ImportantData) {
     else throw err;
   }
 }
+/**
+ * Check if a token is valid
+ * @returns Boolean indicating if the token is valid or not
+ */
+async function isTokenValid(xToken: string, importantData: ImportantData) {
+  const {
+    rows: [found],
+  } = await db.query<{ current_token: string }>(
+    "SELECT current_token FROM token_data WHERE (previous_token = $1 OR current_token = $1) AND ip_address = $2;",
+    [xToken, importantData.ipAddress]
+  );
+
+  if (!found) return false;
+
+  // expect it to be deleted soon
+  if (!(await tokenShouldPurge(found.current_token))) return false;
+
+  return true;
+}
 
 /**
- * Validate a token, increment it, and regenerate the value
+ * Increment token uses and generate a new token
  * @returns The new token
  */
-async function getToken(
+async function rotateToken(
   xToken: string,
   importantData: ImportantData,
   incrementUses = false
 ) {
-  // Allow the previous token or current token to be specified.
-  // Either way, it's expected that the new token is used.
-  // However, the client probably didn't save the current_token which is now previous_token, so they can't use previous_token anymore
-  // Unfortunate
+  if (!(await isTokenValid(xToken, importantData))) return;
 
-  // Increment the uses
-  // Set the previous token to the current token
-  // Set the current token to a random base64 value
   const {
     rows: [found],
   } = await db.query<{ current_token: string }>(
     "WITH updated AS (UPDATE token_data SET previous_token = current_token, current_token = encode(gen_random_bytes(16), 'base64'), uses = uses + $1 WHERE (previous_token = $2 OR current_token = $2) AND ip_address = $3 RETURNING *) SELECT * FROM updated;",
     [incrementUses ? 1 : 0, xToken, importantData.ipAddress]
   );
-
-  if (!found) return;
-
-  // expect it to be deleted soon
-  if (!(await tokenValid(found.current_token))) return;
 
   return found.current_token;
 }
@@ -230,15 +238,13 @@ server.post(
   async (request, reply) => {
     if (!context) return reply.status(425).send();
 
-    const newToken = await getToken(
-      request.headers["x-token"] as string,
-      getImportantData(request),
-      true
-    );
-
-    if (!newToken) return reply.status(402).send();
-
-    reply.header("x-token", newToken);
+    if (
+      !(await isTokenValid(
+        request.headers["x-token"] as string,
+        getImportantData(request)
+      ))
+    )
+      return reply.status(402).send();
 
     const hashed = await context.run(
       new TextEncoder().encode(request.body as string),
@@ -246,6 +252,14 @@ server.post(
         name: "hashToken",
       }
     );
+
+    const newToken = await rotateToken(
+      request.headers["x-token"] as string,
+      getImportantData(request),
+      true
+    );
+
+    reply.header("x-token", newToken);
 
     reply.send(hashed);
   }
@@ -262,11 +276,16 @@ server.post(
     },
   },
   async (request, reply) => {
-    const newToken = await getToken(
+    if (
+      !(await isTokenValid(request.body as string, getImportantData(request)))
+    )
+      reply.status(402).send();
+
+    const newToken = await rotateToken(
       request.body as string,
       getImportantData(request)
     );
-    if (!newToken) reply.status(402).send();
+
     return reply.send(newToken);
   }
 );

@@ -8,7 +8,7 @@ export async function purgeTokens() {
   ).rowCount;
 }
 
-export async function tokenValid(token: string) {
+export async function tokenShouldPurge(token: string) {
   const {
     rows: [found],
   } = await db.query(
