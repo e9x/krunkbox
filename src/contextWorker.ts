@@ -139,8 +139,13 @@ export const hashToken = (token: ArrayBuffer) =>
     }).catch(reject)
   );
 
+export interface ExportedGame {
+  source: string;
+  renamed: Record<string, string>;
+}
+
 export const game = () =>
-  new Promise<string>(async (resolve, reject) => {
+  new Promise<ExportedGame>(async (resolve, reject) => {
     try {
       const env = await execute({
         ...baseInit(),
@@ -148,18 +153,16 @@ export const game = () =>
           new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24]).buffer,
         newFunction: (args) => {
           if (argsIsSource(args)) {
-            let source = args[1];
-            args[1] = "";
-
             const renamed = env.getRenamed();
 
             renamed.WP_MMToken = args[0];
 
-            source = `${Object.entries(renamed)
-              .map(([name, src]) => `window.${src}=${name}`)
-              .join(";")};${source}`;
+            resolve({
+              source: args[1],
+              renamed,
+            });
 
-            resolve(source);
+            args[1] = "";
           }
 
           return args;

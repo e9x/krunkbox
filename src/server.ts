@@ -7,6 +7,7 @@ import updateBin, { binDir } from "./updateBin.js";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import AsyncExitHook from "async-exit-hook";
+import type { ExportedGame } from "contextWorker.js";
 import type { FastifyRequest } from "fastify";
 import fastify from "fastify";
 import { access, unlink } from "node:fs/promises";
@@ -15,12 +16,12 @@ import pg from "pg";
 import Piscina from "piscina";
 
 export interface ContextWorker extends Piscina {
-  run(task: undefined, runOptions: { name: "game" }): Promise<string>;
+  run(task: undefined, runOptions: { name: "game" }): Promise<ExportedGame>;
   run(task: ArrayBuffer, runOptions: { name: "hashToken" }): Promise<string>;
 }
 
 export interface ParseWorker extends Piscina {
-  run(task: string): Promise<void>;
+  run(task: ExportedGame): Promise<void>;
 }
 
 const parse: ParseWorker = new Piscina({
