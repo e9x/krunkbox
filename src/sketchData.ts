@@ -70,8 +70,6 @@ async function updateGameData() {
     }
 
     gameVersion = matchGameVersion;
-
-    console.trace({ gameVersion });
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     console.error("friendly error:", err);
