@@ -12,7 +12,7 @@ let sketchVersion: undefined | string;
 let gameVersion: undefined | string;
 
 const gamePath = new URL("./game.min.js", binDir);
-export const userscriptName = "krunksketch.user.js";
+export const userscriptName = "sketch.user.js";
 export const sketchPath = new URL(userscriptName, binDir);
 
 export function getSketchVersion() {
