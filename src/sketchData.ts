@@ -46,6 +46,8 @@ async function updateSketchData() {
     }
 
     sketchVersion = matchSketchVersion;
+
+    console.log({ sketchVersion });
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     console.error("friendly error:", err);
@@ -70,6 +72,8 @@ async function updateGameData() {
     }
 
     gameVersion = matchGameVersion;
+
+    console.log({ gameVersion });
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     console.error("friendly error:", err);
