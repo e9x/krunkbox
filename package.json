@@ -7,7 +7,6 @@
   "scripts": {
     "start": "node --experimental-vm-modules ./dist/server.js",
     "testctxw": "node --experimental-vm-modules ./dist/testContextWorker.js",
-    "testparse": "node ./dist/testParse.js",
     "purge": "node ./dist/taskPurge.js",
     "build": "tsc",
     "watch": "tsc --watch"
