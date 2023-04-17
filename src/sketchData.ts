@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 // Use memory as a cache layer
 // Save both the gameScript and sketchScript in memory as soon as they're accessible
 import { binDir } from "./updateBin.js";
@@ -34,51 +35,64 @@ export function getGameScript() {
 async function updateSketchData() {
   sketchScript = undefined;
 
-  try {
-    sketchScript = await readFile(sketchPath, "utf-8");
+  while (true)
+    try {
+      sketchScript = await readFile(sketchPath, "utf-8");
 
-    const [, matchSketchVersion] =
-      sketchScript.match(/^\/\/ @version\s+(.*?)$/m) || [];
+      const [, matchSketchVersion] =
+        sketchScript.match(/^\/\/ @version\s+(.*?)$/m) || [];
 
-    if (!matchSketchVersion) {
-      console.error("Failure finding sketch version");
-      return;
+      if (!matchSketchVersion) {
+        console.error("Failure finding sketch version");
+        await sleep(1e3);
+        continue;
+      }
+
+      sketchVersion = matchSketchVersion;
+
+      console.log({ sketchVersion });
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      console.error("friendly error:", err);
+      console.log(
+        `Cannot read ${sketchPath}. Version information won't be shown`
+      );
+      break;
     }
+}
 
-    sketchVersion = matchSketchVersion;
-
-    console.log({ sketchVersion });
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    console.error("friendly error:", err);
-    console.log(
-      `Cannot read ${sketchPath}. Version information won't be shown`
-    );
-  }
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
 }
 
 async function updateGameData() {
   gameScript = undefined;
 
-  try {
-    gameScript = await readFile(gamePath, "utf-8");
+  while (true)
+    try {
+      gameScript = await readFile(gamePath, "utf-8");
 
-    const [, matchGameVersion] =
-      gameScript.match(/exports=JSON\.parse\('"(.*?)"'\)/) || [];
+      const [, matchGameVersion] =
+        gameScript.match(/exports=JSON\.parse\('"(.*?)"'\)/) || [];
 
-    if (!matchGameVersion) {
-      console.error("Failure finding game version");
-      return;
+      if (!matchGameVersion) {
+        console.error("Failure finding game version");
+        await sleep(1e3);
+        continue;
+      }
+
+      gameVersion = matchGameVersion;
+      console.log({ gameVersion });
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      console.error("friendly error:", err);
+      console.log(
+        `Cannot read ${gamePath}. Version information won't be shown`
+      );
+      break;
     }
-
-    gameVersion = matchGameVersion;
-
-    console.log({ gameVersion });
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    console.error("friendly error:", err);
-    console.log(`Cannot read ${gamePath}. Version information won't be shown`);
-  }
 }
 
 // export so we can ending the watcher
