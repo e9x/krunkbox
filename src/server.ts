@@ -162,7 +162,7 @@ server.post(
       latestVersion: sketchVersion,
       sketchUpdated: gameVersion === body.currentGameVersion,
       // client will interpret as relative to API url
-      updateURL: `/${userscriptName}`,
+      updateURL: `${userscriptName}`,
     } as SketchVersion);
   }
 );
