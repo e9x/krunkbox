@@ -10,6 +10,7 @@ CREATE TABLE token_data (
     ip_address TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     uses INTEGER NOT NULL DEFAULT 0,
+    lastDIY BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE(previous_token),
     UNIQUE(current_token),
     UNIQUE(workink_token)

@@ -343,13 +343,19 @@ server.post(
   async (request, reply) => {
     if (!context) return reply.status(425).send();
 
-    if (
-      !(await isTokenValid(
-        request.headers["x-token"] as string,
-        getImportantData(request)
-      ))
-    )
+    const xToken = request.headers["x-token"] as string;
+
+    if (!(await isTokenValid(xToken, getImportantData(request))))
       return reply.status(402).send();
+
+    const {
+      rows: [{ original_last_diy }],
+    } = await db.query<{ original_last_diy: boolean }>(
+      "WITH updated AS (UPDATE token_data SET last_diy = NOT last_diy WHERE current_token = $1 OR previous_token = $1 RETURNING last_diy) SELECT NOT last_diy AS original_last_diy FROM updated;",
+      [xToken]
+    );
+
+    if (!original_last_diy) return reply.status(429).send();
 
     const hashed = await context.run(
       new TextEncoder().encode(request.body as string),
@@ -358,11 +364,7 @@ server.post(
       }
     );
 
-    const newToken = await rotateToken(
-      request.headers["x-token"] as string,
-      getImportantData(request),
-      true
-    );
+    const newToken = await rotateToken(xToken, getImportantData(request), true);
 
     reply.header("x-token", newToken);
 
