@@ -284,18 +284,14 @@ async function isTokenValid(xToken: string, importantData: ImportantData) {
  * Increment token uses and generate a new token
  * @returns The new token
  */
-async function rotateToken(
-  xToken: string,
-  importantData: ImportantData,
-  incrementUses = false
-) {
+async function rotateToken(xToken: string, importantData: ImportantData) {
   if (!(await isTokenValid(xToken, importantData))) return;
 
   const {
     rows: [found],
   } = await db.query<{ current_token: string }>(
     "WITH updated AS (UPDATE token_data SET previous_token = current_token, current_token = encode(gen_random_bytes(16), 'base64'), uses = uses + $1 WHERE (previous_token = $2 OR current_token = $2) AND ip_address = $3 RETURNING *) SELECT * FROM updated;",
-    [incrementUses ? 1 : 0, xToken, importantData.ipAddress]
+    [1, xToken, importantData.ipAddress]
   );
 
   return found.current_token;
@@ -364,7 +360,7 @@ server.post(
       }
     );
 
-    const newToken = await rotateToken(xToken, getImportantData(request), true);
+    const newToken = await rotateToken(xToken, getImportantData(request));
 
     reply.header("x-token", newToken);
 
