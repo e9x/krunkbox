@@ -4,7 +4,7 @@ import { DEVELOPMENT, PORT } from "./env.js";
 import { tokenShouldPurge } from "./purgeTokens.js";
 import {
   getGameScript,
-  getGameVersion,
+  getGameChecksum,
   getSketchScript,
   getSketchVersion,
   userscriptName,
@@ -122,10 +122,10 @@ server.post(
     schema: {
       body: {
         type: "object",
-        required: ["currentVersion", "currentGameVersion"],
+        required: ["currentVersion", "supportedGame"],
         properties: {
           currentVersion: { type: "string" },
-          currentGameVersion: { type: "string" },
+          supportedGame: { type: "string" },
         },
       },
       response: {
@@ -147,11 +147,11 @@ server.post(
       currentVersion: string;
       // we should probably source the current game version from the userscript
       // no harm in trusting the client on this one though
-      currentGameVersion: string;
+      supportedGame: string;
     };
 
-    const gameVersion = getGameVersion();
-    if (!gameVersion) return reply.status(425).send();
+    const gameChecksum = getGameChecksum();
+    if (!gameChecksum) return reply.status(425).send();
     const sketchVersion = getSketchVersion();
     if (!sketchVersion) return reply.status(425).send();
     const reqVersion = new SemVer(body.currentVersion);
@@ -160,7 +160,7 @@ server.post(
     reply.send({
       outdated: reqVersion.compare(myVersion) === -1,
       latestVersion: sketchVersion,
-      sketchUpdated: gameVersion === body.currentGameVersion,
+      sketchUpdated: gameChecksum === body.supportedGame,
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);

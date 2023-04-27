@@ -3,6 +3,7 @@
 // Save both the gameScript and sketchScript in memory as soon as they're accessible
 import { binDir } from "./updateBin.js";
 import { watch } from "chokidar";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -10,7 +11,7 @@ let sketchScript: undefined | string;
 let gameScript: undefined | string;
 
 let sketchVersion: undefined | string;
-let gameVersion: undefined | string;
+let gameChecksum: undefined | string;
 
 const gamePath = new URL("./game.min.js", binDir);
 export const userscriptName = "sketch.user.js";
@@ -20,8 +21,8 @@ export function getSketchVersion() {
   return sketchVersion;
 }
 
-export function getGameVersion() {
-  return gameVersion;
+export function getGameChecksum() {
+  return gameChecksum;
 }
 
 export function getSketchScript() {
@@ -66,6 +67,12 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
 }
 
+function generateSHA512Checksum(string: string) {
+  const hash = createHash("sha512");
+  hash.update(string);
+  return hash.digest("hex");
+}
+
 async function updateGameData() {
   gameScript = undefined;
 
@@ -73,17 +80,9 @@ async function updateGameData() {
     try {
       gameScript = await readFile(gamePath, "utf-8");
 
-      const [, matchGameVersion] =
-        gameScript.match(/exports=JSON\.parse\('"(.*?)"'\)/) || [];
+      gameChecksum = generateSHA512Checksum(gameScript);
+      console.log({ gameChecksum });
 
-      if (!matchGameVersion) {
-        console.error("Failure finding game version");
-        await sleep(1e3);
-        continue;
-      }
-
-      gameVersion = matchGameVersion;
-      console.log({ gameVersion });
       break;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
