@@ -4,13 +4,15 @@ import { Deobfuscator } from "deobfuscator";
 import esbuild from "esbuild";
 import { writeFile } from "node:fs/promises";
 
+const myTokenArg = "WP_MMToken";
+
 export default async function parseGame(exp: ExportedGame) {
   // add helpers so the debug file can execute
   await writeFile(
     new URL("./game.debug.js", binDir),
     `${Object.entries(exp.renamed)
       .map(([name, src]) => `window.${src}=${name}`)
-      .join(";")};${exp.source}`
+      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`
   );
 
   console.log("Processing game...");
@@ -27,6 +29,8 @@ export default async function parseGame(exp: ExportedGame) {
 
   for (const v in exp.renamed)
     deobfuscated = deobfuscated.replaceAll(exp.renamed[v], v);
+
+  deobfuscated = deobfuscated.replaceAll(exp.token, myTokenArg);
 
   console.time("Minify");
   let { code: minified } = await esbuild.transform(deobfuscated, {

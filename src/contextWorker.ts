@@ -142,6 +142,7 @@ export const hashToken = (token: ArrayBuffer) =>
 export interface ExportedGame {
   source: string;
   renamed: Record<string, string>;
+  token: string;
 }
 
 export const game = () =>
@@ -155,11 +156,10 @@ export const game = () =>
           if (argsIsSource(args)) {
             const renamed = env.getRenamed();
 
-            renamed.WP_MMToken = args[0];
-
             resolve({
               source: args[1],
               renamed,
+              token: args[0],
             });
 
             args[1] = "";
