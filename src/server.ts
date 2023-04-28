@@ -122,9 +122,10 @@ server.post(
     schema: {
       body: {
         type: "object",
-        required: ["currentVersion", "supportedGame"],
+        required: ["currentVersion"],
         properties: {
           currentVersion: { type: "string" },
+          currentGame: { type: "string" },
           supportedGame: { type: "string" },
         },
       },
@@ -147,7 +148,8 @@ server.post(
       currentVersion: string;
       // we should probably source the current game version from the userscript
       // no harm in trusting the client on this one though
-      supportedGame: string;
+      supportedGame?: string;
+      currentGame?: string;
     };
 
     const gameChecksum = getGameChecksum();
