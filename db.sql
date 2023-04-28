@@ -11,6 +11,7 @@ CREATE TABLE token_data (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     uses INTEGER NOT NULL DEFAULT 0,
     last_diy BOOLEAN NOT NULL DEFAULT FALSE,
+    lifetime BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE(previous_token),
     UNIQUE(current_token),
     UNIQUE(workink_token)

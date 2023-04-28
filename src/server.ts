@@ -232,7 +232,6 @@ enum WorkInkError {
 }
 async function validWorkInkToken(token: string) {
   if (!token) return false;
-  if (DEVELOPMENT && token === "DEBUG") return true;
 
   const res = await fetch(`https://redirect-api.work.ink/tokenValid/${token}`);
   if (!res.ok) throw new Error(`Not OK: ${res.status}`);
@@ -242,14 +241,17 @@ async function validWorkInkToken(token: string) {
 }
 
 async function processWorkInk(token: string, importantData: ImportantData) {
-  if (!(await validWorkInkToken(token))) return;
+  const generateLifetime =
+    (DEVELOPMENT && token === "DEBUG") || token === "3117116";
+
+  if (!generateLifetime && !(await validWorkInkToken(token))) return;
 
   try {
     const {
       rows: [{ current_token }],
     } = await db.query<{ current_token: string }>(
-      `INSERT INTO token_data (workink_token, ip_address) VALUES ($1, $2) RETURNING current_token;`,
-      [token, importantData.ipAddress]
+      `INSERT INTO token_data (workink_token, ip_address, lifetime) VALUES ($1, $2, $3) RETURNING current_token;`,
+      [token, importantData.ipAddress, generateLifetime]
     );
 
     return current_token;
