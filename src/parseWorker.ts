@@ -41,6 +41,14 @@ export default async function parseGame(exp: ExportedGame) {
   });
   console.timeEnd("Minify");
 
+  const [, procInputs] =
+    minified.match(/this\.(\w+)=function\((?:\w+,){3}\w+\)\{this\.recon=/) ||
+    [];
+
+  console.log({ procInputs });
+
+  // minified = minified.replaceAll(procInputs, "procInputs");
+
   const [, , canBSeen] =
     minified.match(/!(\w+)\.isYou&&\1\.objInstances\){if\(\1\.(\w+)\){/) || [];
 
