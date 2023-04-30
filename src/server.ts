@@ -324,7 +324,7 @@ server.post(
   }
 );
 
-server.post(
+/*server.post(
   "/hash",
   {
     schema: {
@@ -370,7 +370,7 @@ server.post(
 
     reply.send(hashed);
   }
-);
+);*/
 
 // Validate the token
 server.post(
