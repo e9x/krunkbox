@@ -143,8 +143,8 @@ server.post(
       },
     },
   },
-  (request, reply) => {
-    const body = request.body as {
+  (req, reply) => {
+    const body = req.body as {
       currentVersion: string;
       // we should probably source the current game version from the userscript
       // no harm in trusting the client on this one though
@@ -169,7 +169,7 @@ server.post(
   }
 );
 
-server.get(`/${userscriptName}`, (request, reply) => {
+server.get(`/${userscriptName}`, (req, reply) => {
   const sketchScript = getSketchScript();
 
   // we should just try again ON THE SERVER because we can't just show users 425...
@@ -197,15 +197,15 @@ server.get(
       },
     },
   },
-  async (request, reply) => {
+  async (req, reply) => {
     const gameScript = getGameScript();
 
     if (!gameScript) return reply.status(404).send();
 
     if (
       !(await isTokenValid(
-        request.headers["x-token"] as string,
-        getImportantData(request)
+        req.headers["x-token"] as string,
+        getImportantData(req)
       ))
     )
       return reply.status(402).send();
@@ -220,10 +220,10 @@ interface ImportantData {
   userAgent: string;
 }
 
-function getImportantData(request: FastifyRequest): ImportantData {
+function getImportantData(req: FastifyRequest): ImportantData {
   return {
-    ipAddress: request.headers["cf-connecting-ip"]?.toString() || request.ip,
-    userAgent: request.headers["user-agent"]?.toString() || "",
+    ipAddress: req.headers["cf-connecting-ip"]?.toString() || req.ip,
+    userAgent: req.headers["user-agent"]?.toString() || "",
   };
 }
 
@@ -311,10 +311,10 @@ server.post(
       },
     },
   },
-  async (request, reply) => {
+  async (req, reply) => {
     const token = await processWorkInk(
-      request.body as string,
-      getImportantData(request)
+      req.body as string,
+      getImportantData(req)
     );
 
     if (token === WorkInkError.DuplicateToken) return reply.status(422).send();
@@ -340,12 +340,12 @@ server.post(
       },
     },
   },
-  async (request, reply) => {
+  async (req, reply) => {
     if (!context) return reply.status(425).send();
 
-    const xToken = request.headers["x-token"] as string;
+    const xToken = req.headers["x-token"] as string;
 
-    if (!(await isTokenValid(xToken, getImportantData(request))))
+    if (!(await isTokenValid(xToken, getImportantData(req))))
       return reply.status(402).send();
 
     const {
@@ -382,15 +382,13 @@ server.post(
       },
     },
   },
-  async (request, reply) => {
-    if (
-      !(await isTokenValid(request.body as string, getImportantData(request)))
-    )
+  async (req, reply) => {
+    if (!(await isTokenValid(req.body as string, getImportantData(req))))
       reply.status(402).send();
 
     const newToken = await rotateToken(
-      request.body as string,
-      getImportantData(request)
+      req.body as string,
+      getImportantData(req)
     );
 
     return reply.send(newToken);
