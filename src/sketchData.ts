@@ -55,7 +55,7 @@ async function updateSketchData() {
       break;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-      console.error("friendly error:", err);
+      console.error(err);
       console.log(
         `Cannot read ${sketchPath}. Version information won't be shown`
       );
@@ -86,7 +86,7 @@ async function updateGameData() {
       break;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-      console.error("friendly error:", err);
+      console.error(err);
       console.log(
         `Cannot read ${gamePath}. Version information won't be shown`
       );
