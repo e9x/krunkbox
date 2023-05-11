@@ -14,14 +14,19 @@ let gameSkins: undefined | string;
 
 let sketchVersion: undefined | string;
 // null = file doesn't exist, undfined = waiting..., string = REAL
-let gameChecksum: undefined | null | string;
+let gameSourceChecksum: undefined | null | string;
+let gameSkinsChecksum: undefined | null | string;
 
 export function getSketchVersion() {
   return sketchVersion;
 }
 
-export function getGameChecksum() {
-  return gameChecksum;
+export function getGameSourceChecksum() {
+  return gameSourceChecksum;
+}
+
+export function getGameSkinsChecksum() {
+  return gameSkinsChecksum;
 }
 
 export function getSketchScript() {
@@ -78,14 +83,13 @@ function generateSHA512Checksum(string: string) {
 
 async function updateGameSourceData() {
   gameSource = undefined;
-  gameChecksum = null;
+  gameSourceChecksum = null;
 
   while (true)
     try {
       gameSource = await readFile(gameSourcePath, "utf-8");
-
-      gameChecksum = generateSHA512Checksum(gameSource);
-      console.log({ gameChecksum });
+      gameSourceChecksum = generateSHA512Checksum(gameSource);
+      console.log("Game Source:", gameSourceChecksum);
 
       break;
     } catch (err) {
@@ -100,10 +104,13 @@ async function updateGameSourceData() {
 
 async function updateGameSkinsData() {
   gameSkins = undefined;
+  gameSkinsChecksum = null;
 
   while (true)
     try {
       gameSkins = await readFile(gameSkinsPath, "utf-8");
+      gameSkinsChecksum = generateSHA512Checksum(gameSkins);
+      console.log("Game Skins: ", gameSkinsChecksum);
 
       break;
     } catch (err) {

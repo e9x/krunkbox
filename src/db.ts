@@ -1,7 +1,7 @@
-import { PG_URL } from "./env.js";
+import { pgURL } from "./env.js";
 import pg from "pg";
 
-const db = new pg.Client(PG_URL);
+const db = new pg.Client(pgURL);
 
 db.connect();
 

@@ -3,17 +3,18 @@ import db from "./db";
 import type { KruSource } from "./electronker/inject";
 import type { KruEnv } from "./electronker/kruEnv";
 import createKruEnv from "./electronker/kruEnv";
-import { DEVELOPMENT, PORT } from "./env";
+import { development, port, skipUpdates } from "./env";
 import { tokenShouldPurge } from "./purgeTokens";
 import {
   getGameSource,
-  getGameChecksum,
+  getGameSourceChecksum,
   getGameSkins,
   getSketchScript,
   getSketchVersion,
   gameSourceWatcher,
   gameSkinsWatcher,
   sketchWatcher,
+  getGameSkinsChecksum,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
@@ -47,9 +48,15 @@ async function parseGame(kruEnv: KruEnv) {
   await parse.run(await kruEnv.source());
 }
 
+let didTest = false;
 let testPassed = false;
 
 async function updateContext() {
+  if (skipUpdates) {
+    console.log("DEBUG: Skipping updates");
+    return;
+  }
+
   const updated = await updateBin();
 
   // prepare environment for testing and extracting the source
@@ -71,9 +78,11 @@ async function updateContext() {
     }
 
     testPassed = await testKru(kruEnv);
+    didTest = true;
   } else {
     console.log("Up to date.");
     testPassed = await testKru(kruEnv);
+    didTest = true;
   }
 
   try {
@@ -148,8 +157,8 @@ server.post(
       currentGame?: string;
     };
 
-    const gameChecksum = getGameChecksum();
-    if (gameChecksum === undefined) return reply.status(425).send();
+    const gameSourceChecksum = getGameSourceChecksum();
+    if (gameSourceChecksum === undefined) return reply.status(425).send();
     const sketchVersion = getSketchVersion();
     if (!sketchVersion) return reply.status(425).send();
     const reqVersion = new SemVer(body.currentVersion);
@@ -159,11 +168,12 @@ server.post(
       outdated: reqVersion.compare(myVersion) === -1,
       latestVersion: sketchVersion,
       // test didn't pass = not updated
-      sketchUpdated: testPassed
-        ? gameChecksum === null
-          ? false
-          : gameChecksum === body.supportedGame
-        : false,
+      sketchUpdated:
+        skipUpdates || !didTest || testPassed
+          ? gameSourceChecksum === null
+            ? false
+            : gameSourceChecksum === body.supportedGame
+          : false,
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
@@ -182,7 +192,7 @@ server.get(`/${userscriptName}`, (req, reply) => {
   );
 
   reply.header("content-type", "application/javascript");
-  reply.send(sketchScript);
+  return sketchScript;
 });
 
 server.get(
@@ -211,8 +221,17 @@ server.get(
     )
       return reply.status(402).send();
 
+    const etag = `"${getGameSourceChecksum()}"`;
+
     reply.header("content-type", "application/javascript");
-    reply.send(gameScript);
+    reply.header("etag", etag);
+
+    if (req.headers["if-none-match"] === etag) {
+      reply.status(304);
+      return;
+    }
+
+    return gameScript;
   }
 );
 
@@ -230,9 +249,9 @@ server.get(
     },
   },
   async (req, reply) => {
-    const skins = getGameSkins();
+    const gameSkins = getGameSkins();
 
-    if (!skins) return reply.status(404).send();
+    if (!gameSkins) return reply.status(404).send();
 
     if (
       !(await isTokenValid(
@@ -242,8 +261,17 @@ server.get(
     )
       return reply.status(402).send();
 
+    const etag = `"${getGameSkinsChecksum()}"`;
+
     reply.header("content-type", "application/octet-stream");
-    reply.send(skins);
+    reply.header("etag", etag);
+
+    if (req.headers["if-none-match"] === etag) {
+      reply.status(304);
+      return;
+    }
+
+    return gameSkins;
   }
 );
 
@@ -274,7 +302,7 @@ async function validWorkInkToken(token: string) {
 
 async function processWorkInk(token: string, importantData: ImportantData) {
   const generateLifetime =
-    (DEVELOPMENT && token === "DEBUG") || token === "3117116";
+    (development && token === "DEBUG") || token === "3117116";
 
   if (!generateLifetime && !(await validWorkInkToken(token))) return;
 
@@ -429,7 +457,7 @@ server.post(
 
 server.listen(
   {
-    port: PORT,
+    port,
   },
   (err, url) => {
     if (err) {
