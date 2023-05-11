@@ -1,16 +1,17 @@
 import type { KruEnv } from "./electronker/kruEnv";
+import { getGameSource } from "sketchData";
 
-export default async function (kruEnv: KruEnv) {
+export default async function testKru(kruEnv: KruEnv) {
   console.group("Test");
 
   try {
-    /*const token = await (
+    const token = await (
       await fetch("https://matchmaker.krunker.io/generate-token")
-    ).arrayBuffer();*/
+    ).text();
 
-    const token = new TextDecoder().decode(
+    /*const token = new TextDecoder().decode(
       new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24])
-    );
+    );*/
 
     console.time("Hash");
     const hash = await kruEnv.hashToken(token);
@@ -19,6 +20,14 @@ export default async function (kruEnv: KruEnv) {
     console.log("Hash:", new TextEncoder().encode(hash));
 
     // hash = hash.slice(0, 2) + "as" + hash.slice(4);
+
+    const [, version] =
+      getGameSource()?.match(/.exports=JSON.parse\('"(\w+)"'\)/) || [];
+
+    if (!version) {
+      console.error("Failure finding game version");
+      return false;
+    }
 
     const r = await fetch(
       `https://matchmaker.krunker.io/seek-game?${new URLSearchParams({
@@ -30,7 +39,7 @@ export default async function (kruEnv: KruEnv) {
           .map((e) => String.fromCharCode(e.charCodeAt(0) - 10))
           .join(""),
         // very subject to change:
-        // dataQuery: JSON.stringify({ v: "dqk8nbmX7Juu0f4b62wtlwM6pw8ytLHG" }),
+        dataQuery: JSON.stringify({ v: version }),
       })}`,
       {
         headers: {
@@ -61,7 +70,12 @@ export default async function (kruEnv: KruEnv) {
       await r.json().catch(() => Symbol("INVALID JSON"))
     );
 
-    if (r.status == 520) throw new Error("Hash is poisoned");
+    if (r.status == 520) {
+      console.error("Hash is poisoned");
+      return false;
+    }
+
+    return true;
   } finally {
     console.groupEnd();
   }
