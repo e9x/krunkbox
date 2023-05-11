@@ -21,7 +21,7 @@ import {
   gameSourcePath,
   userscriptName,
 } from "./sketchDataPaths";
-import test from "./test.js";
+import testKru from "./test.js";
 import updateBin, { binDir } from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
@@ -56,6 +56,8 @@ async function parseGame() {
   await parse.run(await kruEnv.source());
 }
 
+let testPassed = false;
+
 async function updateContext() {
   const updated = await updateBin();
 
@@ -77,11 +79,11 @@ async function updateContext() {
       await parseGame();
     }
 
-    test(kruEnv!);
+    testPassed = await testKru(kruEnv!);
   } else {
     if (!kruEnv) await createContext();
     console.log("Up-to-date");
-    test(kruEnv!);
+    testPassed = await testKru(kruEnv!);
   }
 
   try {
@@ -164,8 +166,12 @@ server.post(
     reply.send({
       outdated: reqVersion.compare(myVersion) === -1,
       latestVersion: sketchVersion,
-      sketchUpdated:
-        gameChecksum === null ? false : gameChecksum === body.supportedGame,
+      // test didn't pass = not updated
+      sketchUpdated: testPassed
+        ? gameChecksum === null
+          ? false
+          : gameChecksum === body.supportedGame
+        : false,
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
