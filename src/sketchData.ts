@@ -13,7 +13,8 @@ let gameSource: undefined | string;
 let gameSkins: undefined | string;
 
 let sketchVersion: undefined | string;
-let gameChecksum: undefined | string;
+// null = file doesn't exist, undfined = waiting..., string = REAL
+let gameChecksum: undefined | null | string;
 
 export function getSketchVersion() {
   return sketchVersion;
@@ -77,6 +78,7 @@ function generateSHA512Checksum(string: string) {
 
 async function updateGameSourceData() {
   gameSource = undefined;
+  gameChecksum = null;
 
   while (true)
     try {

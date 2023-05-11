@@ -155,7 +155,7 @@ server.post(
     };
 
     const gameChecksum = getGameChecksum();
-    if (!gameChecksum) return reply.status(425).send();
+    if (gameChecksum === undefined) return reply.status(425).send();
     const sketchVersion = getSketchVersion();
     if (!sketchVersion) return reply.status(425).send();
     const reqVersion = new SemVer(body.currentVersion);
@@ -164,7 +164,8 @@ server.post(
     reply.send({
       outdated: reqVersion.compare(myVersion) === -1,
       latestVersion: sketchVersion,
-      sketchUpdated: gameChecksum === body.supportedGame,
+      sketchUpdated:
+        gameChecksum === null ? false : gameChecksum === body.supportedGame,
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
