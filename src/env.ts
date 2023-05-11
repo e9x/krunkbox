@@ -8,9 +8,6 @@ if (isNaN(port)) throw new TypeError("Invalid PORT");
 export const pgURL = process.env.PG_URL || "";
 if (!pgURL) throw new TypeError("Invalid PG_URL");
 
-export const workinkAPI = process.env.WORKINK_API || "";
-if (!workinkAPI) throw new TypeError("Invalid WORKINK_API");
-
 export const development = process.env.NODE_ENV !== "production";
 
 // for quickly updating the server logic
