@@ -43,16 +43,7 @@ const parse: ParseWorker = new Piscina({
   filename: new URL("./parseWorker.js", import.meta.url).toString(),
 });
 
-let kruEnv: KruEnv | undefined;
-
-async function createContext() {
-  if (kruEnv) await kruEnv.collect();
-  kruEnv = await createKruEnv();
-}
-
-async function parseGame() {
-  if (!kruEnv) throw new Error("No context");
-
+async function parseGame(kruEnv: KruEnv) {
   await parse.run(await kruEnv.source());
 }
 
@@ -61,29 +52,28 @@ let testPassed = false;
 async function updateContext() {
   const updated = await updateBin();
 
-  console.log("Game updated?", updated);
+  // prepare environment for testing and extracting the source
+  const kruEnv = await createKruEnv();
 
   if (updated.core || updated.loader_js || updated.loader_wasm) {
-    console.log("Updated");
-
-    await createContext();
+    console.log("Game updated.");
 
     if (updated.core || updated.skins) {
       try {
+        await unlink(gameSourceDebugPath);
         await unlink(gameSourcePath);
         await unlink(gameSkinsPath);
       } catch (err) {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
 
-      await parseGame();
+      await parseGame(kruEnv);
     }
 
-    testPassed = await testKru(kruEnv!);
+    testPassed = await testKru(kruEnv);
   } else {
-    if (!kruEnv) await createContext();
-    console.log("Up-to-date");
-    testPassed = await testKru(kruEnv!);
+    console.log("Up to date.");
+    testPassed = await testKru(kruEnv);
   }
 
   try {
@@ -94,8 +84,10 @@ async function updateContext() {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
     // minify the source if we don't have it for some reason
 
-    await parseGame();
+    await parseGame(kruEnv);
   }
+
+  await kruEnv.collect();
 }
 
 updateContext();
