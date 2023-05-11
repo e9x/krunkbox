@@ -53,7 +53,7 @@ export default async function parseGame(exp: KruSource) {
 
   console.log({ procInputs });
 
-  // minified = minified.replaceAll(procInputs, "procInputs");
+  minified = minified.replaceAll(procInputs, "procInputs");
 
   const [, , canBSeen] =
     minified.match(/!(\w+)\.isYou&&\1\.objInstances\){if\(\1\.(\w+)\){/) || [];
