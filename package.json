@@ -5,11 +5,10 @@
   "author": "",
   "main": "index.js",
   "scripts": {
-    "start": "node --experimental-vm-modules ./dist/server.js",
-    "testctxw": "node --experimental-vm-modules ./dist/testContextWorker.js",
+    "start": "node ./dist/server.js",
     "purge": "node ./dist/taskPurge.js",
-    "build": "tsc",
-    "watch": "tsc --watch"
+    "build": "rollup -c",
+    "watch": "rollup -cw"
   },
   "type": "module",
   "license": "ISC",
@@ -24,12 +23,15 @@
     "fastify": "^4.17.0",
     "pg": "^8.10.0",
     "piscina": "^3.2.0",
+    "puppeteer": "^19.8.0",
     "rimraf": "^5.0.0",
     "semver": "^7.5.0",
     "source-map-support": "^0.5.21"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",
+    "@rollup/plugin-node-resolve": "^15.0.2",
+    "@rollup/plugin-typescript": "^11.1.0",
     "@types/async-exit-hook": "^2.0.0",
     "@types/eslint-scope": "^3.7.4",
     "@types/estree": "^1.0.1",
@@ -41,6 +43,8 @@
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-import": "^2.27.5",
     "prettier": "^2.8.8",
+    "rollup": "^3.21.6",
+    "tslib": "^2.5.0",
     "typescript": "^5.0.4"
   }
 }

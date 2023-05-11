@@ -1,19 +1,25 @@
-import { binDir } from "./updateBin.js";
-import type { ExportedGame } from "contextWorker.js";
+import type { KruSource } from "./electronker/inject";
+import {
+  gameSkinsPath,
+  gameSourceDebugPath,
+  gameSourcePath,
+} from "./sketchDataPaths";
 import { Deobfuscator } from "deobfuscator";
 import esbuild from "esbuild";
 import { writeFile } from "node:fs/promises";
 
 const myTokenArg = "WP_MMToken";
 
-export default async function parseGame(exp: ExportedGame) {
+export default async function parseGame(exp: KruSource) {
   // add helpers so the debug file can execute
   await writeFile(
-    new URL("./game.debug.js", binDir),
+    gameSourceDebugPath,
     `${Object.entries(exp.renamed)
       .map(([name, src]) => `window.${src}=${name}`)
       .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`
   );
+
+  await writeFile(gameSkinsPath, exp.skins);
 
   console.log("Processing game...");
 
@@ -58,5 +64,5 @@ export default async function parseGame(exp: ExportedGame) {
 
   new Function(deobfuscated);
 
-  await writeFile(new URL("./game.min.js", binDir), minified);
+  await writeFile(gameSourcePath, minified);
 }

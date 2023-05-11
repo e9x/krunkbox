@@ -4,30 +4,31 @@ import { fileURLToPath } from "node:url";
 import { rimraf } from "rimraf";
 
 export const binDir = new URL("../bin/", import.meta.url);
-export const loaderScriptPath = new URL("./loader.mjs", binDir);
+export const loaderModuleJS = new URL("./loader.mjs", binDir);
 export const loaderWasmPath = new URL("./loader.wasm", binDir);
 export const coreDir = new URL("./cores/", binDir);
+export const skinsDir = new URL("./skins/", binDir);
 
 interface LoaderResource {
-  alias: "loader js" | "loader wasm";
+  alias: "loader_js" | "loader_wasm";
   url: string;
   path: PathLike;
 }
 
 const resources: LoaderResource[] = [
   {
-    alias: "loader js",
+    alias: "loader_js",
     url: "https://krunker.io/pkg/loader.mjs",
-    path: loaderScriptPath,
+    path: loaderModuleJS,
   },
   {
-    alias: "loader wasm",
+    alias: "loader_wasm",
     url: "https://krunker.io/pkg/loader.wasm",
     path: loaderWasmPath,
   },
 ];
 
-type Updated = Record<LoaderResource["alias"] | "core dat", boolean>;
+type Updated = Record<LoaderResource["alias"] | "core" | "skins", boolean>;
 
 async function testLoaders(updated: Partial<Updated>) {
   await Promise.all(
@@ -111,11 +112,9 @@ async function testCoreDat(updated: Partial<Updated>) {
   }
 
   if (didUpdate) {
-    updated["core dat"] = true;
+    updated.core = true;
     await rimraf(fileURLToPath(coreDir));
   }
-
-  const promises: Promise<void>[] = [];
 
   try {
     await mkdir(coreDir);
@@ -123,21 +122,74 @@ async function testCoreDat(updated: Partial<Updated>) {
     if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
   }
 
-  for (let i = 0; i < splitCores; i++)
-    promises.push(
-      (async () => {
-        const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`, {
-          headers: coreHeaders,
-        });
-        if (!res.ok || !res.body) throw new Error("Fatal error");
-        await writeFile(
-          new URL(`core.dat.split-${i}`, coreDir),
-          Buffer.from(await res.arrayBuffer())
-        );
-      })()
-    );
+  await Promise.all(
+    [...Array(splitCores)].map(async (_, i) => {
+      const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`, {
+        headers: coreHeaders,
+      });
+      if (!res.ok || !res.body) throw new Error("Fatal error");
+      await writeFile(
+        new URL(`core.dat.split-${i}`, coreDir),
+        Buffer.from(await res.arrayBuffer())
+      );
+    })
+  ).catch(console.error);
+}
 
-  await Promise.all(promises).catch(console.error);
+async function testSkins(updated: Partial<Updated>) {
+  const skinsData = await Promise.all(
+    (
+      await readdir(skinsDir).catch(() => [])
+    ).map(async (file) => (await stat(new URL(file, coreDir))).mtimeMs)
+  );
+  let splitSkins = 0;
+  let didUpdate = false;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = await fetch(`https://krunker.io/skins${splitSkins}.jspck`, {
+      method: "HEAD",
+      headers: coreHeaders,
+    });
+
+    if (!res.ok) break;
+
+    const lastModified = res.headers.get("last-modified");
+
+    if (!lastModified) throw new Error("Invalid last-modified header");
+
+    const mtimeMs = new Date(lastModified).getTime();
+
+    if (splitSkins + 1 > skinsData.length || skinsData[splitSkins] < mtimeMs) {
+      didUpdate = true;
+    }
+
+    splitSkins++;
+  }
+
+  if (didUpdate) {
+    updated.skins = true;
+    await rimraf(fileURLToPath(skinsDir));
+  }
+
+  try {
+    await mkdir(skinsDir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
+  }
+
+  await Promise.all(
+    [...Array(splitSkins)].map(async (_, i) => {
+      const res = await fetch(`https://krunker.io/skins${i}.jspck`, {
+        headers: coreHeaders,
+      });
+      if (!res.ok || !res.body) throw new Error("Fatal error");
+      await writeFile(
+        new URL(`skins${i}.jspck`, skinsDir),
+        Buffer.from(await res.arrayBuffer())
+      );
+    })
+  ).catch(console.error);
 }
 
 export default async function updateBin() {
@@ -149,8 +201,11 @@ export default async function updateBin() {
     if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
   }
 
-  await testLoaders(updated);
-  await testCoreDat(updated);
+  await Promise.all([
+    testLoaders(updated),
+    testCoreDat(updated),
+    testSkins(updated),
+  ]);
 
   return updated;
 }

@@ -1,22 +1,31 @@
 import "source-map-support/register.js";
-import db from "./db.js";
-import { DEVELOPMENT, PORT } from "./env.js";
-import { tokenShouldPurge } from "./purgeTokens.js";
+import db from "./db";
+import type { KruSource } from "./electronker/inject";
+import type { KruEnv } from "./electronker/kruEnv";
+import createKruEnv from "./electronker/kruEnv";
+import { DEVELOPMENT, PORT } from "./env";
+import { tokenShouldPurge } from "./purgeTokens";
 import {
-  getGameScript,
+  getGameSource,
   getGameChecksum,
+  getGameSkins,
   getSketchScript,
   getSketchVersion,
-  userscriptName,
-  gameWatcher,
+  gameSourceWatcher,
+  gameSkinsWatcher,
   sketchWatcher,
 } from "./sketchData.js";
+import {
+  gameSkinsPath,
+  gameSourceDebugPath,
+  gameSourcePath,
+  userscriptName,
+} from "./sketchDataPaths";
 import test from "./test.js";
-import updateBin, { binDir } from "./updateBin.js";
+import updateBin, { binDir } from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import AsyncExitHook from "async-exit-hook";
-import type { ExportedGame } from "contextWorker.js";
 import type { FastifyRequest } from "fastify";
 import fastify from "fastify";
 import { access, unlink } from "node:fs/promises";
@@ -25,13 +34,8 @@ import pg from "pg";
 import Piscina from "piscina";
 import { SemVer } from "semver";
 
-export interface ContextWorker extends Piscina {
-  run(task: undefined, runOptions: { name: "game" }): Promise<ExportedGame>;
-  run(task: ArrayBuffer, runOptions: { name: "hashToken" }): Promise<string>;
-}
-
 export interface ParseWorker extends Piscina {
-  run(task: ExportedGame): Promise<void>;
+  run(task: KruSource): Promise<void>;
 }
 
 const parse: ParseWorker = new Piscina({
@@ -39,21 +43,17 @@ const parse: ParseWorker = new Piscina({
   filename: new URL("./parseWorker.js", import.meta.url).toString(),
 });
 
-let context: ContextWorker | undefined;
+let kruEnv: KruEnv | undefined;
 
 async function createContext() {
-  if (context) await context.destroy();
-
-  context = new Piscina({
-    maxThreads: 1, // DEBUG
-    filename: new URL("./contextWorker.js", import.meta.url).toString(),
-  });
+  if (kruEnv) await kruEnv.collect();
+  kruEnv = await createKruEnv();
 }
 
 async function parseGame() {
-  if (!context) throw new Error("No context");
+  if (!kruEnv) throw new Error("No context");
 
-  await parse.run(await context.run(undefined, { name: "game" }));
+  await parse.run(await kruEnv.source());
 }
 
 async function updateContext() {
@@ -61,14 +61,15 @@ async function updateContext() {
 
   console.log("Game updated?", updated);
 
-  if (updated["core dat"] || updated["loader js"] || updated["loader wasm"]) {
+  if (updated.core || updated.loader_js || updated.loader_wasm) {
     console.log("Updated");
 
     await createContext();
 
-    if (updated["core dat"]) {
+    if (updated.core || updated.skins) {
       try {
-        await unlink(new URL("./game.min.js", binDir));
+        await unlink(gameSourcePath);
+        await unlink(gameSkinsPath);
       } catch (err) {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
@@ -76,16 +77,17 @@ async function updateContext() {
       await parseGame();
     }
 
-    test(context!);
+    test(kruEnv!);
   } else {
-    if (!context) await createContext();
+    if (!kruEnv) await createContext();
     console.log("Up-to-date");
-    test(context!);
+    test(kruEnv!);
   }
 
   try {
-    await access(new URL("./game.debug.js", binDir));
-    await access(new URL("./game.min.js", binDir));
+    await access(gameSourceDebugPath);
+    await access(gameSourcePath);
+    await access(gameSkinsPath);
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
     // minify the source if we don't have it for some reason
@@ -198,7 +200,7 @@ server.get(
     },
   },
   async (req, reply) => {
-    const gameScript = getGameScript();
+    const gameScript = getGameSource();
 
     if (!gameScript) return reply.status(404).send();
 
@@ -212,6 +214,37 @@ server.get(
 
     reply.header("content-type", "application/javascript");
     reply.send(gameScript);
+  }
+);
+
+server.get(
+  "/skins",
+  {
+    schema: {
+      headers: {
+        type: "object",
+        required: ["x-token"],
+        properties: {
+          "x-token": { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, reply) => {
+    const skins = getGameSkins();
+
+    if (!skins) return reply.status(404).send();
+
+    if (
+      !(await isTokenValid(
+        req.headers["x-token"] as string,
+        getImportantData(req)
+      ))
+    )
+      return reply.status(402).send();
+
+    reply.header("content-type", "application/octet-stream");
+    reply.send(skins);
   }
 );
 
@@ -411,6 +444,7 @@ server.listen(
 AsyncExitHook(async () => {
   await server.close();
   await db.end();
-  await gameWatcher.close();
+  await gameSourceWatcher.close();
+  await gameSkinsWatcher.close();
   await sketchWatcher.close();
 });

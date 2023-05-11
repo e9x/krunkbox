@@ -1,6 +1,6 @@
-import type { ContextWorker } from "./server.js";
+import type { KruEnv } from "./electronker/kruEnv";
 
-export default async function (context: ContextWorker) {
+export default async function (kruEnv: KruEnv) {
   console.group("Test");
 
   try {
@@ -8,13 +8,12 @@ export default async function (context: ContextWorker) {
       await fetch("https://matchmaker.krunker.io/generate-token")
     ).arrayBuffer();*/
 
-    const token = new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24])
-      .buffer;
+    const token = new TextDecoder().decode(
+      new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24])
+    );
 
     console.time("Hash");
-    const hash = await context.run(token, {
-      name: "hashToken",
-    });
+    const hash = await kruEnv.hashToken(token);
     console.timeEnd("Hash");
 
     console.log("Hash:", new TextEncoder().encode(hash));
