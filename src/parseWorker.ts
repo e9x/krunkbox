@@ -28,9 +28,20 @@ export default async function parseGame(exp: KruSource) {
   // crack(gameScript):                                       27.367s
   // await new Deobfuscator().deobfuscateSource(gameScript):  8:38.864 (m:ss.mmm) fail
   // ^ but only StringDecoder:                                35.158s
-  let deobfuscated = await new Deobfuscator().deobfuscateSource(exp.source, {
-    customTransformers: [["StringDecoder", []]],
-  });
+  let deobfuscated = "";
+
+  const oldLog = console.log;
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  console.log = () => {};
+
+  try {
+    deobfuscated = await new Deobfuscator().deobfuscateSource(exp.source, {
+      customTransformers: [["StringDecoder", []]],
+    });
+  } finally {
+    console.log = oldLog;
+  }
+
   console.timeEnd("Deobfuscate");
 
   for (const v in exp.renamed)
