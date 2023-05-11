@@ -140,7 +140,7 @@ async function testSkins(updated: Partial<Updated>) {
   const skinsData = await Promise.all(
     (
       await readdir(skinsDir).catch(() => [])
-    ).map(async (file) => (await stat(new URL(file, coreDir))).mtimeMs)
+    ).map(async (file) => (await stat(new URL(file, skinsDir))).mtimeMs)
   );
   let splitSkins = 0;
   let didUpdate = false;
