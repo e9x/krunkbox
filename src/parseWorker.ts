@@ -62,6 +62,7 @@ export default async function parseGame(exp: KruSource) {
 
   minified = minified.replaceAll(canBSeen, "canBSeen");
 
+  // make sure it can be executed
   new Function(deobfuscated);
 
   await writeFile(gameSourcePath, minified);
