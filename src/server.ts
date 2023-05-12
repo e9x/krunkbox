@@ -76,13 +76,8 @@ async function updateContext() {
 
       await parseGame(kruEnv);
     }
-
-    testPassed = await testKru(kruEnv);
-    didTest = true;
   } else {
     console.log("Up to date.");
-    testPassed = await testKru(kruEnv);
-    didTest = true;
   }
 
   try {
@@ -95,6 +90,9 @@ async function updateContext() {
 
     await parseGame(kruEnv);
   }
+
+  testPassed = await testKru(kruEnv);
+  didTest = true;
 
   await kruEnv.collect();
 }
