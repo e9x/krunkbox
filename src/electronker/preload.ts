@@ -3,7 +3,7 @@ import type { KruSource } from "./inject";
 import { magic } from "./magic";
 
 function argsIsSource(args: string[]) {
-  return args.length === 2 && args[1].startsWith("\nfunction ");
+  return args.length === 2 && args[1].startsWith("\n(function(");
 }
 
 export const hashToken = (token: string) =>

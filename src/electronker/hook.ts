@@ -111,7 +111,7 @@ export function nativeDescriptor(
 
 export const hookedContexts = new WeakSet<typeof globalThis>();
 
-export type HookConstruct = (...args: string[]) => Function;
+export type HookConstruct = (...newArgArray: string[]) => Function;
 
 export interface HookOptions {
   newFunction?: (

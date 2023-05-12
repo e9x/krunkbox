@@ -213,19 +213,25 @@ export async function magic(createOptions: CreateOptions) {
     const { newFunction } = options;
     if (!newFunction) return;
 
-    const oldFunction = context.Function;
+    const { Function } = context;
+    const { apply } = Function.prototype;
+    const applyCall = Function.prototype.call.bind(apply);
 
-    function Function(...args: string[]) {
-      // have to add ! due to weird bug in TS
-      return newFunction!(args, (...args: string[]) => {
-        if (new.target) return new oldFunction(...args);
-        else return oldFunction(...args);
-      });
-    }
+    context.Function.prototype.apply = mirrorAttributes(
+      (
+        {
+          apply(thisArg, argArray) {
+            if (this === Function)
+              return newFunction(argArray, (...newArgArray: string[]) =>
+                applyCall(this, thisArg, newArgArray)
+              );
 
-    mirrorAttributes(Function, oldFunction, true);
-
-    context.Function = Function as unknown as (typeof globalThis)["Function"];
+            return applyCall(this, thisArg, argArray);
+          },
+        } as { apply: typeof apply }
+      ).apply,
+      apply
+    );
   });
 
   loader.default();
