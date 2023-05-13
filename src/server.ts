@@ -211,13 +211,12 @@ server.get(
 
     if (!gameScript) return reply.status(404).send();
 
-    if (
-      !(await isTokenValid(
-        req.headers["x-token"] as string,
-        getImportantData(req)
-      ))
-    )
+    const xToken = req.headers["x-token"] as string;
+
+    if (!(await isTokenValid(xToken, getImportantData(req))))
       return reply.status(402).send();
+
+    await incrementToken(xToken, getImportantData(req));
 
     const etag = `"${getGameSourceChecksum()}"`;
 
@@ -251,13 +250,12 @@ server.get(
 
     if (!gameSkins) return reply.status(404).send();
 
-    if (
-      !(await isTokenValid(
-        req.headers["x-token"] as string,
-        getImportantData(req)
-      ))
-    )
+    const xToken = req.headers["x-token"] as string;
+
+    if (!(await isTokenValid(xToken, getImportantData(req))))
       return reply.status(402).send();
+
+    await incrementToken(xToken, getImportantData(req));
 
     const etag = `"${getGameSkinsChecksum()}"`;
 
@@ -357,6 +355,15 @@ async function rotateToken(xToken: string, importantData: ImportantData) {
   );
 
   return found.current_token;
+}
+
+async function incrementToken(xToken: string, importantData: ImportantData) {
+  if (!(await isTokenValid(xToken, importantData))) return;
+
+  await db.query<{ current_token: string }>(
+    "UPDATE token_data SET uses = uses + $1 WHERE (previous_token = $2 OR current_token = $2) AND ip_address = $3;",
+    [1, xToken, importantData.ipAddress]
+  );
 }
 
 // generate a token
