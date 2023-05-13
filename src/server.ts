@@ -99,7 +99,7 @@ async function updateContext() {
 
 updateContext();
 
-setInterval(updateContext, 60e3 * 15);
+setInterval(updateContext, 60e3 * 30);
 
 const server = fastify({ logger: { level: "error" } });
 
