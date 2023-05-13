@@ -438,7 +438,7 @@ server.post(
 );*/
 
 // Validate the token
-server.post(
+/*server.post(
   "/me",
   {
     schema: {
@@ -458,7 +458,7 @@ server.post(
 
     return reply.send(newToken);
   }
-);
+);*/
 
 server.listen(
   {
