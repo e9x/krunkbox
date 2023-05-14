@@ -3,7 +3,7 @@ import db from "./db";
 import type { KruSource } from "./electronker/inject";
 import type { KruEnv } from "./electronker/kruEnv";
 import createKruEnv from "./electronker/kruEnv";
-import { linkvertiseKey, port, skipUpdates } from "./env";
+import { development, linkvertiseKey, port, skipUpdates } from "./env";
 import {
   getGameSource,
   getGameSourceChecksum,
@@ -323,15 +323,16 @@ RETURNING *;`,
     // todo: check if temp token is at least 30 seconds old
     // and do a timer/periodic refresh on the client
     // Please wait ... seconds...`
+    const lifetime = development && lvToken === "DEBUG";
 
-    if (lvToken !== linkvertiseKey) return res.status(402).send();
+    if (!lifetime && lvToken !== linkvertiseKey) return res.status(402).send();
     if (result.rowCount !== 1) return res.status(400).send();
 
     const {
       rows: [{ current_token }],
     } = await db.query<{ current_token: string }>(
-      `INSERT INTO lv_token_data (linkvertise_token, ip_address, useragent) VALUES ($1, $2, $3) RETURNING current_token;`,
-      [lvToken, data.ipAddress, data.userAgent]
+      `INSERT INTO lv_token_data (linkvertise_token, ip_address, useragent, lifetime) VALUES ($1, $2, $3, $4) RETURNING current_token;`,
+      [lvToken, data.ipAddress, data.userAgent, lifetime]
     );
 
     return current_token;
