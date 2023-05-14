@@ -1,3 +1,4 @@
+import { development } from "../env";
 import {
   coreDir,
   skinsDir,
@@ -22,8 +23,7 @@ export default async function createKruEnv() {
   );
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ["--no-sandbox"],
-    devtools: true,
+    devtools: development,
   });
 
   const page = await browser.newPage();
