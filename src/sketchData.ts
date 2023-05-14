@@ -1,12 +1,11 @@
-/* eslint-disable no-constant-condition */
-// Use memory as a cache layer
-// Save both the gameSource and sketchScript in memory as soon as they're accessible
-
 import { gameSkinsPath, gameSourcePath, sketchPath } from "./sketchDataPaths";
 import { watch } from "chokidar";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+
+// Use memory as a cache layer
+// Save both the gameSource and sketchScript in memory as soon as they're accessible
 
 let sketchScript: undefined | string;
 let gameSource: undefined | string;

@@ -3,7 +3,7 @@ import db from "./db";
 import type { KruSource } from "./electronker/inject";
 import type { KruEnv } from "./electronker/kruEnv";
 import createKruEnv from "./electronker/kruEnv";
-import { port, skipUpdates } from "./env";
+import { linkvertiseKey, port, skipUpdates } from "./env";
 import {
   getGameSource,
   getGameSourceChecksum,
@@ -22,13 +22,7 @@ import {
   userscriptName,
 } from "./sketchDataPaths";
 import testKru from "./test.js";
-import {
-  WorkInkError,
-  getImportantData,
-  incrementToken,
-  isTokenValid,
-  processWorkInk,
-} from "./token";
+import { getImportantData, incrementToken, isTokenValid } from "./token";
 import updateBin, { binDir } from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
@@ -275,26 +269,72 @@ server.get(
   }
 );
 
-// generate a token
+server.get("/hi", async (req, reply) => {
+  // todo: check if there's more than 2 temp tokens that are valid (eg within 10 minutes)
+  // if so, 429
+  const data = getImportantData(req);
+  const result = await db.query<{ value: string }>(
+    "INSERT INTO temp_tokens (ip_address, useragent) VALUES ($1, $2) RETURNING value;",
+    [data.ipAddress, data.userAgent]
+  );
+
+  if (result.rowCount !== 1) throw new Error("Fatal error");
+
+  const { value } = result.rows[0];
+
+  reply.send(value);
+});
+
 server.post(
   "/hi",
   {
     schema: {
       body: {
-        type: "string",
+        type: "array",
+        minItems: 2,
+        maxItems: 2,
+        items: {
+          type: "string",
+        },
       },
     },
   },
-  async (req, reply) => {
-    const token = await processWorkInk(
-      req.body as string,
-      getImportantData(req)
+  async (req, res) => {
+    const tokens = req.body as [lv: string, tmp: string];
+    const lvToken = tokens[0];
+    const tmpToken = tokens[1];
+
+    const data = getImportantData(req);
+    const result = await db.query<{
+      value: string;
+    }>(
+      `UPDATE temp_tokens SET done = TRUE
+WHERE
+    value = $1
+    AND ip_address = $2
+    AND useragent = $3
+    AND NOT done
+    AND NOW() < created_at + INTERVAL '10 minutes' -- within 10 minutes old
+    AND NOW() > created_at + INTERVAL '4 seconds' -- at least 4 seconds old
+RETURNING *;`,
+      [tmpToken, data.ipAddress, data.userAgent]
     );
 
-    if (token === WorkInkError.DuplicateToken) return reply.status(422).send();
-    else if (!token) return reply.status(402).send();
+    // todo: check if temp token is at least 30 seconds old
+    // and do a timer/periodic refresh on the client
+    // Please wait ... seconds...`
 
-    reply.send(token);
+    if (lvToken !== linkvertiseKey) return res.status(402).send();
+    if (result.rowCount !== 1) return res.status(400).send();
+
+    const {
+      rows: [{ current_token }],
+    } = await db.query<{ current_token: string }>(
+      `INSERT INTO lv_token_data (linkvertise_token, ip_address, useragent) VALUES ($1, $2, $3) RETURNING current_token;`,
+      [lvToken, data.ipAddress, data.userAgent]
+    );
+
+    return current_token;
   }
 );
 
@@ -325,7 +365,7 @@ server.post(
     const {
       rows: [{ original_last_diy }],
     } = await db.query<{ original_last_diy: boolean }>(
-      "WITH updated AS (UPDATE token_data SET last_diy = NOT last_diy WHERE current_token = $1 OR previous_token = $1 RETURNING last_diy) SELECT NOT last_diy AS original_last_diy FROM updated;",
+      "WITH updated AS (UPDATE lv_token_data SET last_diy = NOT last_diy WHERE current_token = $1 OR previous_token = $1 RETURNING last_diy) SELECT NOT last_diy AS original_last_diy FROM updated;",
       [xToken]
     );
 

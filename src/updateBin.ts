@@ -86,7 +86,6 @@ async function testCoreDat(updated: Partial<Updated>) {
   let splitCores = 0;
   let didUpdate = false;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await fetch(
       `https://krunker.io/pkg/core.dat.split-${splitCores}`,
@@ -145,7 +144,6 @@ async function testSkins(updated: Partial<Updated>) {
   let splitSkins = 0;
   let didUpdate = false;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await fetch(`https://krunker.io/skins${splitSkins}.jspck`, {
       method: "HEAD",

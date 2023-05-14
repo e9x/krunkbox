@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/server.js",
-    "purge": "node ./dist/taskPurge.js",
+    "purge": "node ./dist/purge.js",
     "build": "rollup -c",
     "watch": "rollup -cw"
   },

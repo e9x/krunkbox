@@ -12,6 +12,12 @@ const config = [
     plugins: [nodeResolve(), typescript()],
   },
   {
+    input: "src/taskPurge.ts",
+    output: { file: "dist/purge.js", format: "es", sourcemap: true },
+    external: [/node_modules/],
+    plugins: [nodeResolve(), typescript()],
+  },
+  {
     input: "src/parseWorker.ts",
     output: { file: "dist/parseWorker.js", format: "es", sourcemap: true },
     external: [/node_modules/],
