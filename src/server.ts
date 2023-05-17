@@ -412,10 +412,9 @@ RETURNING *;`,
 WHERE
     value = $1
     AND ip_address = $2
-    AND useragent = $3
     AND NOT done
 RETURNING *;`,
-        [accessKey, data.ipAddress, data.userAgent]
+        [accessKey, data.ipAddress]
       );
 
       if (accessKeyResult.rowCount !== 1) return res.status(400).send();
