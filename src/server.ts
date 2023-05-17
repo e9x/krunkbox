@@ -168,7 +168,7 @@ server.get(
     // useragent and whether it's been used doesn't matter
     // prevent spam!
     const searchRes = await db.query<{ value: string }>(
-      "SELECT value FROM temp_access_tokens WHERE ip_address = $1 AND created_at >= NOW() - INTERVAL '10 minutes';",
+      "SELECT value FROM temp_access_tokens WHERE ip_address = $1 AND created_at >= NOW() - INTERVAL '8 minutes';",
       [data.ipAddress]
     );
 
