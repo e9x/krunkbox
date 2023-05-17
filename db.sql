@@ -40,3 +40,13 @@ CREATE TABLE temp_tokens (
     done BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE (value)
 );
+
+CREATE TABLE temp_access_tokens (
+    id SERIAL PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT gen_random_uuid(),
+    ip_address TEXT NOT NULL,
+    useragent TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    done BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE (value)
+);

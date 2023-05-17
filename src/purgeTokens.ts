@@ -26,3 +26,10 @@ export async function purgeTempTokens() {
     )
   ).rowCount;
 }
+export async function purgeTempAccessTokens() {
+  return (
+    await db.query(
+      "DELETE FROM temp_access_tokens WHERE created_at + INTERVAL '10 minutes' < NOW();"
+    )
+  ).rowCount;
+}

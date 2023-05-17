@@ -28,7 +28,8 @@ import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import AsyncExitHook from "async-exit-hook";
 import fastify from "fastify";
-import { access, unlink } from "node:fs/promises";
+import Handlebars from "handlebars";
+import { access, readFile, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 import { SemVer } from "semver";
@@ -110,6 +111,81 @@ server.register(fastifyCors, {
   allowedHeaders: ["x-token"],
   exposedHeaders: ["x-token"],
 });
+
+server.get(
+  "/key/:key",
+  {
+    schema: {
+      params: {
+        type: "object",
+        required: ["key"],
+        properties: {
+          key: { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, res) => {
+    const redirectPage = Handlebars.compile(
+      await readFile(
+        new URL("../redirect.handlebars", import.meta.url),
+        "utf-8"
+      )
+    );
+
+    res.header("content-type", "text/html");
+
+    res.send(
+      "<!DOCTYPE html>" +
+        redirectPage({
+          accessKey: (req.params as { key: string }).key,
+        })
+    );
+  }
+);
+
+server.get(
+  "/redirect",
+  {
+    schema: {
+      querystring: {
+        type: "object",
+        required: ["lv"],
+        properties: {
+          lv: { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, res) => {
+    const data = getImportantData(req);
+
+    const { lv } = req.query as { lv: string };
+
+    if (lv !== linkvertiseKey) return res.status(400).send();
+
+    // Search for an existing temp_access_token that's no older than 10 minutes
+    // useragent and whether it's been used doesn't matter
+    // prevent spam!
+    const searchRes = await db.query<{ value: string }>(
+      "SELECT value FROM temp_access_tokens WHERE ip_address = $1 AND created_at >= NOW() - INTERVAL '10 minutes';",
+      [data.ipAddress]
+    );
+
+    // If a valid token exists, redirect to that
+    if (searchRes.rowCount === 1)
+      return res.redirect(307, `./key/${searchRes.rows[0].value}`);
+
+    const insertRes = await db.query<{ value: string }>(
+      "INSERT INTO temp_access_tokens (ip_address, useragent) VALUES ($1, $2) RETURNING value;",
+      [data.ipAddress, data.userAgent]
+    );
+
+    if (insertRes.rowCount !== 1) return res.status(500).send();
+
+    res.redirect(307, `./key/${insertRes.rows[0].value}`);
+  }
+);
 
 interface SketchVersion {
   outdated: boolean;
@@ -300,8 +376,8 @@ server.post(
     },
   },
   async (req, res) => {
-    const tokens = req.body as [lv: string, tmp: string];
-    const lvToken = tokens[0];
+    const tokens = req.body as [accessKey: string, tmpToken: string];
+    const accessKey = tokens[0];
     const tmpToken = tokens[1];
 
     const data = getImportantData(req);
@@ -315,24 +391,41 @@ WHERE
     AND useragent = $3
     AND NOT done
     AND NOW() < created_at + INTERVAL '10 minutes' -- within 10 minutes old
-    AND NOW() > created_at + INTERVAL '4 seconds' -- at least 4 seconds old
+    AND NOW() > created_at + INTERVAL '2 seconds' -- at least 2 seconds old
 RETURNING *;`,
       [tmpToken, data.ipAddress, data.userAgent]
     );
 
+    if (result.rowCount !== 1) return res.status(400).send();
+
     // todo: check if temp token is at least 30 seconds old
     // and do a timer/periodic refresh on the client
     // Please wait ... seconds...`
-    const lifetime = development && lvToken === "DEBUG";
 
-    if (!lifetime && lvToken !== linkvertiseKey) return res.status(402).send();
-    if (result.rowCount !== 1) return res.status(400).send();
+    const lifetime = development && accessKey === "DEBUG";
+
+    if (!development || accessKey !== "DEBUG") {
+      const accessKeyResult = await db.query<{
+        value: string;
+      }>(
+        `UPDATE temp_access_tokens SET done = TRUE
+WHERE
+    value = $1
+    AND ip_address = $2
+    AND useragent = $3
+    AND NOT done
+RETURNING *;`,
+        [accessKey, data.ipAddress, data.userAgent]
+      );
+
+      if (accessKeyResult.rowCount !== 1) return res.status(400).send();
+    }
 
     const {
       rows: [{ current_token }],
     } = await db.query<{ current_token: string }>(
       `INSERT INTO lv_token_data (linkvertise_token, ip_address, useragent, lifetime) VALUES ($1, $2, $3, $4) RETURNING current_token;`,
-      [lvToken, data.ipAddress, data.userAgent, lifetime]
+      [accessKey, data.ipAddress, data.userAgent, lifetime]
     );
 
     return current_token;
