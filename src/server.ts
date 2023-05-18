@@ -402,9 +402,7 @@ RETURNING *;`,
     // and do a timer/periodic refresh on the client
     // Please wait ... seconds...`
 
-    const lifetime =
-      (development && accessKey === "DEBUG") ||
-      ["129890123128"].includes(accessKey);
+    const lifetime = development && accessKey === "DEBUG";
 
     if (!lifetime) {
       const accessKeyResult = await db.query<{
