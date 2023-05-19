@@ -380,11 +380,15 @@ server.post(
     const accessKey = tokens[0];
     const tmpToken = tokens[1];
 
+    const lifetime = development && accessKey === "DEBUG";
+
     const data = getImportantData(req);
-    const result = await db.query<{
-      value: string;
-    }>(
-      `UPDATE temp_tokens SET done = TRUE
+
+    if (!lifetime) {
+      const result = await db.query<{
+        value: string;
+      }>(
+        `UPDATE temp_tokens SET done = TRUE
 WHERE
     value = $1
     AND ip_address = $2
@@ -393,18 +397,15 @@ WHERE
     AND NOW() < created_at + INTERVAL '10 minutes' -- within 10 minutes old
     AND NOW() > created_at + INTERVAL '2 seconds' -- at least 2 seconds old
 RETURNING *;`,
-      [tmpToken, data.ipAddress, data.userAgent]
-    );
+        [tmpToken, data.ipAddress, data.userAgent]
+      );
 
-    if (result.rowCount !== 1) return res.status(400).send();
+      if (result.rowCount !== 1) return res.status(400).send();
 
-    // todo: check if temp token is at least 30 seconds old
-    // and do a timer/periodic refresh on the client
-    // Please wait ... seconds...`
+      // todo: check if temp token is at least 30 seconds old
+      // and do a timer/periodic refresh on the client
+      // Please wait ... seconds...`
 
-    const lifetime = development && accessKey === "DEBUG";
-
-    if (!lifetime) {
       const accessKeyResult = await db.query<{
         value: string;
       }>(
