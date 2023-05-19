@@ -108,7 +108,7 @@ server.register(fastifyStatic, {
 });
 
 server.register(fastifyCors, {
-  allowedHeaders: ["x-token"],
+  allowedHeaders: ["x-token", "content-type"],
   exposedHeaders: ["x-token"],
 });
 
