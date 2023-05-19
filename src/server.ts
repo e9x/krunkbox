@@ -73,7 +73,13 @@ async function updateContext() {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
 
-      await parseGame(kruEnv);
+      try {
+        await parseGame(kruEnv);
+      } catch (err) {
+        console.error(err);
+        console.error("Failure parsing game.");
+        return;
+      }
     }
   } else {
     console.log("Up to date.");
@@ -87,7 +93,13 @@ async function updateContext() {
     if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
     // minify the source if we don't have it for some reason
 
-    await parseGame(kruEnv);
+    try {
+      await parseGame(kruEnv);
+    } catch (err) {
+      console.error(err);
+      console.error("Failure parsing game.");
+      return;
+    }
   }
 
   testPassed = await testKru(kruEnv);
