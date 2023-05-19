@@ -78,6 +78,7 @@ async function updateContext() {
       } catch (err) {
         console.error(err);
         console.error("Failure parsing game.");
+        await kruEnv.collect();
         return;
       }
     }
@@ -98,6 +99,7 @@ async function updateContext() {
     } catch (err) {
       console.error(err);
       console.error("Failure parsing game.");
+      await kruEnv.collect();
       return;
     }
   }
