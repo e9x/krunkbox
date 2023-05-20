@@ -5,6 +5,8 @@ config();
 export const port = Number(process.env.PORT || "80");
 if (isNaN(port)) throw new TypeError("Invalid PORT");
 
+export const host = process.env.HOST || undefined;
+
 export const pgURL = process.env.PG_URL || "";
 if (!pgURL) throw new TypeError("Invalid PG_URL");
 

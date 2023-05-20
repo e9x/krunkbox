@@ -3,7 +3,7 @@ import db from "./db";
 import type { KruSource } from "./electronker/inject";
 import type { KruEnv } from "./electronker/kruEnv";
 import createKruEnv from "./electronker/kruEnv";
-import { development, linkvertiseKey, port, skipUpdates } from "./env";
+import { development, host, linkvertiseKey, port, skipUpdates } from "./env";
 import {
   getGameSource,
   getGameSourceChecksum,
@@ -448,6 +448,7 @@ RETURNING *;`,
 
 server.listen(
   {
+    ...(host ? { host } : {}),
     port,
   },
   (err, url) => {
