@@ -55,6 +55,11 @@ export default async function parseGame(exp: KruSource) {
     sourcemap: false,
     legalComments: "none",
     treeShaking: true,
+    supported: {
+      "nullish-coalescing": false,
+      "optional-catch-binding": false,
+      "optional-chain": false,
+    },
   });
   console.timeEnd("Minify");
 
