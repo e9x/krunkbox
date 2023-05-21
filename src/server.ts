@@ -22,7 +22,12 @@ import {
   userscriptName,
 } from "./sketchDataPaths";
 import testKru from "./test.js";
-import { getImportantData, incrementToken, isTokenValid } from "./token";
+import {
+  getImportantData,
+  incrementToken,
+  isTokenValid,
+  rotateToken,
+} from "./token";
 import updateBin, { binDir } from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
@@ -443,6 +448,29 @@ RETURNING *;`,
     );
 
     return current_token;
+  }
+);
+
+// Validate the token
+server.post(
+  "/me",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+    },
+  },
+  async (req, reply) => {
+    if (!(await isTokenValid(req.body as string, getImportantData(req))))
+      reply.status(402).send();
+
+    const newToken = await rotateToken(
+      req.body as string,
+      getImportantData(req)
+    );
+
+    return reply.send(newToken);
   }
 );
 
