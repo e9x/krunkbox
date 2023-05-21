@@ -1,7 +1,7 @@
 import { gameSkinsPath, gameSourcePath, sketchPath } from "./sketchDataPaths";
 import { watch } from "chokidar";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 // Use memory as a cache layer
@@ -42,10 +42,21 @@ export function getGameSkins() {
 
 async function updateSketchData() {
   sketchScript = undefined;
+  sketchVersion = undefined;
 
   while (true)
     try {
-      sketchScript = await readFile(sketchPath, "utf-8");
+      const tmpSketchScript = await readFile(sketchPath, "utf-8");
+
+      if (tmpSketchScript.split("\n").length > 100) {
+        console.error(
+          "Detected Sketch source code. Deleting file and refusing to serve a script."
+        );
+        await unlink(sketchPath);
+        return;
+      }
+
+      sketchScript = tmpSketchScript;
 
       const [, matchSketchVersion] =
         sketchScript.match(/^\/\/ @version\s+(.*?)$/m) || [];
