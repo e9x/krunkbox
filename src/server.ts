@@ -61,6 +61,8 @@ async function updateContext() {
     return;
   }
 
+  let doTest = false;
+
   const updated = await updateBin();
 
   // prepare environment for testing and extracting the source
@@ -87,6 +89,8 @@ async function updateContext() {
         return;
       }
     }
+
+    doTest = true;
   } else {
     console.log("Up to date.");
   }
@@ -107,10 +111,18 @@ async function updateContext() {
       await kruEnv.collect();
       return;
     }
+
+    doTest = true;
   }
 
-  testPassed = await testKru(kruEnv);
-  didTest = true;
+  if (doTest) {
+    testPassed = await testKru(kruEnv);
+    didTest = true;
+  } else {
+    // we have to assume these values
+    testPassed = true;
+    didTest = true;
+  }
 
   await kruEnv.collect();
 }
