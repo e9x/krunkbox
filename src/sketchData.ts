@@ -1,4 +1,9 @@
-import { gameSkinsPath, gameSourcePath, sketchPath } from "./sketchDataPaths";
+import {
+  compatibleChecksumsPath,
+  gameSkinsPath,
+  gameSourcePath,
+  sketchPath,
+} from "./sketchDataPaths";
 import { watch } from "chokidar";
 import { createHash } from "node:crypto";
 import { readFile, unlink } from "node:fs/promises";
@@ -11,10 +16,27 @@ let sketchScript: undefined | string;
 let gameSource: undefined | string;
 let gameSkins: undefined | string;
 
+let compatibleChecksums: undefined | CompatibleChecksums;
+
+interface CompatibleChecksums {
+  /**
+   * Key is the checksum used in Sketch (SKETCH_SUPPORTED_GAME)
+   * Value is an array of checksums that are compatible with the checksum described in the key.
+   * The checksums are newer/older versions of the game
+   *
+   * If you can support X, then you can support one of Y
+   */
+  [oldSourceChecksum: string]: string[];
+}
+
 let sketchVersion: undefined | string;
 // null = file doesn't exist, undfined = waiting..., string = REAL
 let gameSourceChecksum: undefined | null | string;
 let gameSkinsChecksum: undefined | null | string;
+
+export function getCompatibleChecksums() {
+  return compatibleChecksums;
+}
 
 export function getSketchVersion() {
   return sketchVersion;
@@ -133,6 +155,25 @@ async function updateGameSkinsData() {
     }
 }
 
+async function updateCompatibleChecksums() {
+  compatibleChecksums = undefined;
+
+  while (true)
+    try {
+      const data = await readFile(compatibleChecksumsPath, "utf-8");
+      compatibleChecksums = JSON.parse(data) as CompatibleChecksums;
+
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      console.error(err);
+      console.log(
+        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`
+      );
+      break;
+    }
+}
+
 // export so we can ending the watcher
 export const sketchWatcher = watch(fileURLToPath(sketchPath));
 sketchWatcher.on("change", updateSketchData);
@@ -145,3 +186,9 @@ updateGameSourceData();
 export const gameSkinsWatcher = watch(fileURLToPath(gameSkinsPath));
 gameSkinsWatcher.on("change", updateGameSkinsData);
 updateGameSkinsData();
+
+export const compatibleChecksumsWatcher = watch(
+  fileURLToPath(compatibleChecksumsPath)
+);
+compatibleChecksumsWatcher.on("change", updateCompatibleChecksums);
+updateCompatibleChecksums();

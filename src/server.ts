@@ -14,6 +14,8 @@ import {
   gameSkinsWatcher,
   sketchWatcher,
   getGameSkinsChecksum,
+  getCompatibleChecksums,
+  compatibleChecksumsWatcher,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
@@ -224,6 +226,27 @@ interface SketchVersion {
   updateURL: string;
 }
 
+function sketchUpdated(supportedGame?: string) {
+  if (!supportedGame) return;
+
+  if (!skipUpdates && didTest && !testPassed) return false;
+
+  const gameSourceChecksum = getGameSourceChecksum();
+  if (typeof gameSourceChecksum !== "string") return false;
+
+  const compat = getCompatibleChecksums();
+
+  if (
+    gameSourceChecksum !== supportedGame &&
+    (!compat ||
+      !(supportedGame in compat) ||
+      !compat[supportedGame].includes(gameSourceChecksum))
+  )
+    return false;
+
+  return true;
+}
+
 server.post(
   "/sketchVersion",
   {
@@ -260,8 +283,6 @@ server.post(
       currentGame?: string;
     };
 
-    const gameSourceChecksum = getGameSourceChecksum();
-    if (gameSourceChecksum === undefined) return reply.status(425).send();
     const sketchVersion = getSketchVersion();
     if (!sketchVersion) return reply.status(425).send();
     const reqVersion = new SemVer(body.currentVersion);
@@ -271,12 +292,7 @@ server.post(
       outdated: reqVersion.compare(myVersion) === -1,
       latestVersion: sketchVersion,
       // test didn't pass = not updated
-      sketchUpdated:
-        skipUpdates || !didTest || testPassed
-          ? gameSourceChecksum === null
-            ? false
-            : gameSourceChecksum === body.supportedGame
-          : false,
+      sketchUpdated: sketchUpdated(body.supportedGame),
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
@@ -505,5 +521,6 @@ AsyncExitHook(async () => {
   await db.end();
   await gameSourceWatcher.close();
   await gameSkinsWatcher.close();
+  await compatibleChecksumsWatcher.close();
   await sketchWatcher.close();
 });
