@@ -54,23 +54,23 @@ export async function magic(createOptions: CreateOptions) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contentWindowAny = contentWindow as any;
 
+  const oldKeys = Object.keys(contentWindow);
+
   const options = createOptions(() => iframe.remove(), {
     getRenamed: () => {
       const found: Record<string, string> = Object.create(null);
 
-      for (const key in contentWindow)
-        if (
-          contentWindow[key as keyof typeof contentWindow] ===
-            contentWindow.setTimeout &&
-          key !== "setTimeout"
-        )
-          found.setTimeout = key;
-        else if (
-          contentWindow[key as keyof typeof contentWindow] ===
-            contentWindow.requestAnimationFrame &&
-          key !== "requestAnimationFrame"
-        )
-          found.requestAnimationFrame = key;
+      for (const key of oldKeys) {
+        const value = contentWindowAny[key];
+
+        if (typeof value !== "function") continue;
+
+        for (const key2 in contentWindowAny) {
+          if (oldKeys.includes(key2)) continue;
+
+          if (contentWindowAny[key2] === value) found[key] = key2;
+        }
+      }
 
       return found;
     },
