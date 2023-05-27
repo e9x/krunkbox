@@ -31,6 +31,11 @@ export interface MagicOptions {
   resolve?: (data: string) => void;
 }
 
+interface ContentWindow {
+  resolve?: MagicOptions["resolve"];
+  skinfx?: string;
+}
+
 /**
  * Collect and release the context resources
  * @param
@@ -48,11 +53,10 @@ export async function magic(createOptions: CreateOptions) {
   iframe.hidden = true;
   document.documentElement.append(iframe);
 
-  const contentWindow = iframe.contentWindow as typeof globalThis | null;
+  const contentWindow = iframe.contentWindow as
+    | (typeof globalThis & ContentWindow)
+    | null;
   if (!contentWindow) throw new Error("fail");
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const contentWindowAny = contentWindow as any;
 
   const oldKeys = Object.keys(contentWindow);
 
@@ -61,28 +65,29 @@ export async function magic(createOptions: CreateOptions) {
       const found: Record<string, string> = Object.create(null);
 
       for (const key of oldKeys) {
-        const value = contentWindowAny[key];
+        const value = contentWindow[key as keyof typeof contentWindow];
 
         if (typeof value !== "function") continue;
 
-        for (const key2 in contentWindowAny) {
+        for (const key2 in contentWindow) {
           if (oldKeys.includes(key2)) continue;
 
-          if (contentWindowAny[key2] === value) found[key] = key2;
+          if (contentWindow[key2 as keyof typeof contentWindow] === value)
+            found[key] = key2;
         }
       }
 
       return found;
     },
     getSkins: () => {
-      return contentWindowAny.skinfx || "";
+      return contentWindow.skinfx || "";
     },
   });
 
   // return some data from the script
   if (options.resolve) {
     const resolve = options.resolve;
-    contentWindowAny.resolve = (data: string) => resolve(data);
+    contentWindow.resolve = (data: string) => resolve(data);
   }
 
   // they might start checking if random shit like TWEEN, FRVR, and randInt exists
