@@ -41,9 +41,6 @@ interface ContentWindow {
  * @param
  */
 export type CreateOptions = (
-  /**
-   *  hi
-   */
   collect: () => void,
   helpers: { getRenamed: () => Record<string, string>; getSkins: () => string }
 ) => MagicOptions;
