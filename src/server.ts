@@ -10,12 +10,12 @@ import {
   getGameSkins,
   getSketchScript,
   getSketchVersion,
-  gameSourceWatcher,
-  gameSkinsWatcher,
   sketchWatcher,
   getGameSkinsChecksum,
   getCompatibleChecksums,
   compatibleChecksumsWatcher,
+  updateGameSkinsData,
+  updateGameSourceData,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
@@ -52,6 +52,8 @@ const parse: ParseWorker = new Piscina({
 
 async function parseGame(kruEnv: KruEnv) {
   await parse.run(await kruEnv.source());
+  await updateGameSourceData();
+  await updateGameSkinsData();
 }
 
 let didTest = false;
@@ -519,8 +521,6 @@ server.listen(
 AsyncExitHook(async () => {
   await server.close();
   await db.end();
-  await gameSourceWatcher.close();
-  await gameSkinsWatcher.close();
   await compatibleChecksumsWatcher.close();
   await sketchWatcher.close();
 });
