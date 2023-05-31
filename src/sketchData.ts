@@ -162,6 +162,7 @@ async function updateCompatibleChecksums() {
     try {
       const data = await readFile(compatibleChecksumsPath, "utf-8");
       compatibleChecksums = JSON.parse(data) as CompatibleChecksums;
+      console.log({ compatibleChecksums });
 
       break;
     } catch (err) {
