@@ -113,7 +113,7 @@ function generateSHA512Checksum(string: string) {
   return hash.digest("hex");
 }
 
-export async function updateGameSourceData() {
+export async function updateGameData() {
   gameSource = undefined;
   gameSourceChecksum = null;
 
@@ -132,9 +132,7 @@ export async function updateGameSourceData() {
       );
       break;
     }
-}
 
-export async function updateGameSkinsData() {
   gameSkins = undefined;
   gameSkinsChecksum = null;
 
@@ -180,8 +178,7 @@ export const sketchWatcher = watch(fileURLToPath(sketchPath));
 sketchWatcher.on("change", updateSketchData);
 updateSketchData();
 
-updateGameSourceData();
-updateGameSkinsData();
+updateGameData();
 
 export const compatibleChecksumsWatcher = watch(
   fileURLToPath(compatibleChecksumsPath)

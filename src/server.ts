@@ -14,8 +14,7 @@ import {
   getGameSkinsChecksum,
   getCompatibleChecksums,
   compatibleChecksumsWatcher,
-  updateGameSkinsData,
-  updateGameSourceData,
+  updateGameData,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
@@ -52,8 +51,7 @@ const parse: ParseWorker = new Piscina({
 
 async function parseGame(kruEnv: KruEnv) {
   await parse.run(await kruEnv.source());
-  await updateGameSourceData();
-  await updateGameSkinsData();
+  await updateGameData();
 }
 
 let didTest = false;
