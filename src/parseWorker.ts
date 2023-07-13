@@ -4,9 +4,9 @@ import {
   gameSourceDebugPath,
   gameSourcePath,
 } from "./sketchDataPaths";
-import { Deobfuscator } from "deobfuscator";
 import esbuild from "esbuild";
 import { writeFile } from "node:fs/promises";
+import { webcrack } from "webcrack";
 
 const myTokenArg = "WP_MMToken";
 
@@ -35,9 +35,7 @@ export default async function parseGame(exp: KruSource) {
   console.log = () => {};
 
   try {
-    deobfuscated = await new Deobfuscator().deobfuscateSource(exp.source, {
-      customTransformers: [["StringDecoder", []]],
-    });
+    deobfuscated = (await webcrack(exp.source)).code;
   } finally {
     console.log = oldLog;
   }

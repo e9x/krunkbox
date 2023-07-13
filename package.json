@@ -17,7 +17,6 @@
     "@fastify/static": "^6.10.1",
     "async-exit-hook": "^2.0.1",
     "chokidar": "^3.5.3",
-    "deobfuscator": "^2.4.2",
     "dotenv": "^16.0.3",
     "esbuild": "^0.17.18",
     "fastify": "^4.17.0",
@@ -28,7 +27,7 @@
     "rimraf": "^5.0.0",
     "semver": "^7.5.0",
     "source-map-support": "^0.5.21",
-    "webcrack": "^2.5.1"
+    "webcrack": "^2.6.2"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",
