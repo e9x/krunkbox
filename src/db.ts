@@ -1,8 +1,6 @@
-import { pgURL } from "./env.js";
-import pg from "pg";
+import "./env.js";
+import { PrismaClient } from "@prisma/client";
 
-const db = new pg.Client(pgURL);
+const prisma = new PrismaClient();
 
-db.connect();
-
-export default db;
+export default prisma;

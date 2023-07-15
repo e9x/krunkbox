@@ -1,35 +1,72 @@
 import db from "./db";
 
 export async function purgeTokens() {
-  return (
-    await db.query(
-      "DELETE FROM lv_token_data WHERE NOT lifetime AND (uses > 56 OR created_at + INTERVAL '2 days' > NOW());"
-    )
-  ).rowCount;
+  const result = await db.lv_token_data.deleteMany({
+    where: {
+      NOT: {
+        lifetime: true,
+      },
+      OR: [
+        {
+          uses: {
+            gt: 56,
+          },
+        },
+        {
+          created_at: {
+            lte: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          },
+        },
+      ],
+    },
+  });
+
+  return result.count;
 }
 
 export async function tokenShouldPurge(token: string) {
-  const {
-    rows: [found],
-  } = await db.query(
-    "SELECT * FROM lv_token_data WHERE current_token = $1 AND (lifetime OR (uses <= 56 AND created_at + INTERVAL '2 days' > NOW()));",
-    [token]
-  );
+  const found = await db.lv_token_data.findFirst({
+    where: {
+      current_token: token,
+      OR: [
+        {
+          lifetime: true,
+        },
+        {
+          uses: {
+            lte: 56,
+          },
+          created_at: {
+            gte: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          },
+        },
+      ],
+    },
+  });
 
   return !!found;
 }
 
 export async function purgeTempTokens() {
-  return (
-    await db.query(
-      "DELETE FROM temp_tokens WHERE created_at + INTERVAL '10 minutes' < NOW();"
-    )
-  ).rowCount;
+  const result = await db.temp_tokens.deleteMany({
+    where: {
+      created_at: {
+        lt: new Date(Date.now() - 10 * 60 * 1000),
+      },
+    },
+  });
+
+  return result.count;
 }
+
 export async function purgeTempAccessTokens() {
-  return (
-    await db.query(
-      "DELETE FROM temp_access_tokens WHERE created_at + INTERVAL '10 minutes' < NOW();"
-    )
-  ).rowCount;
+  const result = await db.temp_access_tokens.deleteMany({
+    where: {
+      created_at: {
+        lt: new Date(Date.now() - 10 * 60 * 1000),
+      },
+    },
+  });
+
+  return result.count;
 }

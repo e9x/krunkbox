@@ -200,23 +200,38 @@ server.get(
     // Search for an existing temp_access_token that's no older than 10 minutes
     // useragent and whether it's been used doesn't matter
     // prevent spam!
-    const searchRes = await db.query<{ value: string }>(
-      "SELECT value FROM temp_access_tokens WHERE ip_address = $1 AND created_at >= NOW() - INTERVAL '8 minutes';",
-      [data.ipAddress]
-    );
+    const searchRes = await db.temp_access_tokens.findMany({
+      where: {
+        ip_address: data.ipAddress,
+        created_at: {
+          gte: new Date(Date.now() - 8 * 60 * 1000), // 8 minutes ago
+        },
+      },
+      select: {
+        value: true,
+      },
+    });
 
     // If a valid token exists, redirect to that
-    if (searchRes.rowCount === 1)
-      return res.redirect(307, `./key/${searchRes.rows[0].value}`);
+    if (searchRes.length === 1) {
+      return res.redirect(307, `./key/${searchRes[0].value}`);
+    }
 
-    const insertRes = await db.query<{ value: string }>(
-      "INSERT INTO temp_access_tokens (ip_address, useragent) VALUES ($1, $2) RETURNING value;",
-      [data.ipAddress, data.userAgent]
-    );
+    const insertRes = await db.temp_access_tokens.create({
+      data: {
+        ip_address: data.ipAddress,
+        useragent: data.userAgent,
+      },
+      select: {
+        value: true,
+      },
+    });
 
-    if (insertRes.rowCount !== 1) return res.status(500).send();
+    if (!insertRes) {
+      return res.status(500).send();
+    }
 
-    res.redirect(307, `./key/${insertRes.rows[0].value}`);
+    res.redirect(307, `./key/${insertRes.value}`);
   }
 );
 
@@ -396,14 +411,19 @@ server.get("/hi", async (req, reply) => {
   // todo: check if there's more than 2 temp tokens that are valid (eg within 10 minutes)
   // if so, 429
   const data = getImportantData(req);
-  const result = await db.query<{ value: string }>(
-    "INSERT INTO temp_tokens (ip_address, useragent) VALUES ($1, $2) RETURNING value;",
-    [data.ipAddress, data.userAgent]
-  );
+  const result = await db.temp_tokens.create({
+    data: {
+      ip_address: data.ipAddress,
+      useragent: data.userAgent,
+    },
+    select: {
+      value: true,
+    },
+  });
 
-  if (result.rowCount !== 1) throw new Error("Fatal error");
+  if (!result) throw new Error("Fatal error");
 
-  const { value } = result.rows[0];
+  const { value } = result;
 
   reply.send(value);
 });
@@ -432,48 +452,53 @@ server.post(
     const data = getImportantData(req);
 
     if (!lifetime) {
-      const result = await db.query<{
-        value: string;
-      }>(
-        `UPDATE temp_tokens SET done = TRUE
-WHERE
-    value = $1
-    AND ip_address = $2
-    AND useragent = $3
-    AND NOT done
-    AND NOW() < created_at + INTERVAL '10 minutes' -- within 10 minutes old
-    AND NOW() > created_at + INTERVAL '2 seconds' -- at least 2 seconds old
-RETURNING *;`,
-        [tmpToken, data.ipAddress, data.userAgent]
-      );
+      const updateTempTokens = await db.temp_tokens.updateMany({
+        where: {
+          value: tmpToken,
+          ip_address: data.ipAddress,
+          useragent: data.userAgent,
+          done: false,
+          created_at: {
+            lt: new Date(Date.now() - 10 * 60 * 1000), // within 10 minutes old
+            gt: new Date(Date.now() - 2 * 1000), // at least 2 seconds old
+          },
+        },
+        data: {
+          done: true,
+        },
+      });
 
-      if (result.rowCount !== 1) return res.status(400).send();
+      if (updateTempTokens.count !== 1) {
+        return res.status(400).send();
+      }
 
-      // todo: check if temp token is at least 30 seconds old
-      // and do a timer/periodic refresh on the client
-      // Please wait ... seconds...`
+      const updateAccessTokens = await db.temp_access_tokens.updateMany({
+        where: {
+          value: accessKey,
+          ip_address: data.ipAddress,
+          done: false,
+        },
+        data: {
+          done: true,
+        },
+      });
 
-      const accessKeyResult = await db.query<{
-        value: string;
-      }>(
-        `UPDATE temp_access_tokens SET done = TRUE
-WHERE
-    value = $1
-    AND ip_address = $2
-    AND NOT done
-RETURNING *;`,
-        [accessKey, data.ipAddress]
-      );
-
-      if (accessKeyResult.rowCount !== 1) return res.status(400).send();
+      if (updateAccessTokens.count !== 1) {
+        return res.status(400).send();
+      }
     }
 
-    const {
-      rows: [{ current_token }],
-    } = await db.query<{ current_token: string }>(
-      `INSERT INTO lv_token_data (linkvertise_token, ip_address, useragent, lifetime) VALUES ($1, $2, $3, $4) RETURNING current_token;`,
-      [accessKey, data.ipAddress, data.userAgent, lifetime]
-    );
+    const { current_token } = await db.lv_token_data.create({
+      data: {
+        linkvertise_token: accessKey,
+        ip_address: data.ipAddress,
+        useragent: data.userAgent,
+        lifetime,
+      },
+      select: {
+        current_token: true,
+      },
+    });
 
     return current_token;
   }
@@ -518,7 +543,6 @@ server.listen(
 
 AsyncExitHook(async () => {
   await server.close();
-  await db.end();
   await compatibleChecksumsWatcher.close();
   await sketchWatcher.close();
 });

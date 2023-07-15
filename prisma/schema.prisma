@@ -1,0 +1,41 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("PG_URL")
+  extensions = [pgcrypto]
+}
+
+model lv_token_data {
+  id                Int      @id @default(autoincrement())
+  current_token     String   @default(dbgenerated("encode(gen_random_bytes(16), 'base64')"))
+  previous_token    String?  @unique
+  linkvertise_token String
+  ip_address        String
+  useragent         String
+  created_at        DateTime @default(now())
+  uses              Int      @default(0)
+  last_diy          Boolean  @default(false)
+  lifetime          Boolean  @default(false)
+}
+
+model temp_tokens {
+  id         Int      @id @default(autoincrement())
+  value      String   @default(dbgenerated("encode(gen_random_bytes(16), 'base64')"))
+  ip_address String
+  useragent  String
+  created_at DateTime @default(now())
+  done       Boolean  @default(false)
+}
+
+model temp_access_tokens {
+  id         Int      @id @default(autoincrement())
+  value      String   @default(dbgenerated())
+  ip_address String
+  useragent  String
+  created_at DateTime @default(now())
+  done       Boolean  @default(false)
+}

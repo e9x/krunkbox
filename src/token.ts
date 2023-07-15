@@ -22,16 +22,25 @@ export async function isTokenValid(
   xToken: string,
   importantData: ImportantData
 ) {
-  const {
-    rows: [found],
-  } = await db.query<{ current_token: string }>(
-    "SELECT current_token FROM lv_token_data WHERE (previous_token = $1 OR current_token = $1) AND ip_address = $2;",
-    [xToken, importantData.ipAddress]
-  );
+  const found = await db.lv_token_data.findFirst({
+    where: {
+      OR: [
+        {
+          previous_token: xToken,
+        },
+        {
+          current_token: xToken,
+        },
+      ],
+      ip_address: importantData.ipAddress,
+    },
+    select: {
+      current_token: true,
+    },
+  });
 
   if (!found) return false;
 
-  // expect it to be deleted soon
   if (!(await tokenShouldPurge(found.current_token))) return false;
 
   return true;
@@ -47,12 +56,30 @@ export async function rotateToken(
 ) {
   if (!(await isTokenValid(xToken, importantData))) return;
 
-  const {
-    rows: [found],
-  } = await db.query<{ current_token: string }>(
-    "WITH updated AS (UPDATE lv_token_data SET previous_token = current_token, current_token = encode(gen_random_bytes(16), 'base64'), uses = uses + $1 WHERE (previous_token = $2 OR current_token = $2) AND ip_address = $3 RETURNING *) SELECT * FROM updated;",
-    [1, xToken, importantData.ipAddress]
-  );
+  const found = await db.lv_token_data.updateMany({
+    where: {
+      OR: [
+        {
+          previous_token: xToken,
+        },
+        {
+          current_token: xToken,
+        },
+      ],
+      ip_address: importantData.ipAddress,
+    },
+    data: {
+      previous_token: xToken,
+      current_token:
+        await db.$queryRaw<string>`encode(gen_random_bytes(16), 'base64')`,
+      uses: {
+        increment: 1,
+      },
+    },
+    select: {
+      current_token: true,
+    },
+  });
 
   return found.current_token;
 }
@@ -63,8 +90,22 @@ export async function incrementToken(
 ) {
   if (!(await isTokenValid(xToken, importantData))) return;
 
-  await db.query<{ current_token: string }>(
-    "UPDATE lv_token_data SET uses = uses + $1 WHERE (previous_token = $2 OR current_token = $2) AND ip_address = $3;",
-    [1, xToken, importantData.ipAddress]
-  );
+  await db.lv_token_data.updateMany({
+    where: {
+      OR: [
+        {
+          previous_token: xToken,
+        },
+        {
+          current_token: xToken,
+        },
+      ],
+      ip_address: importantData.ipAddress,
+    },
+    data: {
+      uses: {
+        increment: 1,
+      },
+    },
+  });
 }
