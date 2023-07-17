@@ -425,14 +425,14 @@ server.post(
   async (req, res) => {
     const tokens = req.body as [accessKey: string, tmpToken: string];
     const accessKey = tokens[0];
-    const tmpToken = tokens[1];
+    // const tmpToken = tokens[1];
 
     const lifetime = development && accessKey === "DEBUG";
 
     const data = getImportantData(req);
 
     if (!lifetime) {
-      const result = await db.query<{
+      /*const result = await db.query<{
         value: string;
       }>(
         `UPDATE temp_tokens SET done = TRUE
@@ -448,7 +448,7 @@ RETURNING *;`,
       );
 
       if (result.rowCount !== 1) return res.status(400).send();
-
+*/
       // todo: check if temp token is at least 30 seconds old
       // and do a timer/periodic refresh on the client
       // Please wait ... seconds...`
