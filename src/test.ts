@@ -59,14 +59,14 @@ export default async function testKru(kruEnv: KruEnv) {
           "user-agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
         },
-      }
+      },
     );
 
     // 400 = no data query/the hash was already used
     console.log(
       "Response from seek-game:",
       r.status,
-      await r.json().catch(() => Symbol("INVALID JSON"))
+      await r.json().catch(() => Symbol("INVALID JSON")),
     );
 
     if (r.status == 520) {

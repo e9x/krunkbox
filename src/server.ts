@@ -162,8 +162,8 @@ server.get(
     const redirectPage = Handlebars.compile(
       await readFile(
         new URL("../redirect.handlebars", import.meta.url),
-        "utf-8"
-      )
+        "utf-8",
+      ),
     );
 
     res.header("content-type", "text/html");
@@ -172,9 +172,9 @@ server.get(
       "<!DOCTYPE html>" +
         redirectPage({
           accessKey: (req.params as { key: string }).key,
-        })
+        }),
     );
-  }
+  },
 );
 
 server.get(
@@ -202,7 +202,7 @@ server.get(
     // prevent spam!
     const searchRes = await db.query<{ value: string }>(
       "SELECT value FROM temp_access_tokens WHERE ip_address = $1 AND created_at >= NOW() - INTERVAL '8 minutes';",
-      [data.ipAddress]
+      [data.ipAddress],
     );
 
     // If a valid token exists, redirect to that
@@ -211,13 +211,13 @@ server.get(
 
     const insertRes = await db.query<{ value: string }>(
       "INSERT INTO temp_access_tokens (ip_address, useragent) VALUES ($1, $2) RETURNING value;",
-      [data.ipAddress, data.userAgent]
+      [data.ipAddress, data.userAgent],
     );
 
     if (insertRes.rowCount !== 1) return res.status(500).send();
 
     res.redirect(307, `./key/${insertRes.rows[0].value}`);
-  }
+  },
 );
 
 interface SketchVersion {
@@ -296,7 +296,7 @@ server.post(
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
-  }
+  },
 );
 
 server.get(`/${userscriptName}`, (req, reply) => {
@@ -307,7 +307,7 @@ server.get(`/${userscriptName}`, (req, reply) => {
 
   reply.header(
     "content-disposition",
-    `attachment; filename="${userscriptName}"`
+    `attachment; filename="${userscriptName}"`,
   );
 
   reply.header("content-type", "application/javascript");
@@ -350,7 +350,7 @@ server.get(
     }
 
     return gameScript;
-  }
+  },
 );
 
 server.get(
@@ -389,7 +389,7 @@ server.get(
     }
 
     return gameSkins;
-  }
+  },
 );
 
 server.get("/hi", async (req, reply) => {
@@ -398,7 +398,7 @@ server.get("/hi", async (req, reply) => {
   const data = getImportantData(req);
   const result = await db.query<{ value: string }>(
     "INSERT INTO temp_tokens (ip_address, useragent) VALUES ($1, $2) RETURNING value;",
-    [data.ipAddress, data.userAgent]
+    [data.ipAddress, data.userAgent],
   );
 
   if (result.rowCount !== 1) throw new Error("Fatal error");
@@ -462,7 +462,7 @@ WHERE
     AND ip_address = $2
     AND NOT done
 RETURNING *;`,
-        [accessKey, data.ipAddress]
+        [accessKey, data.ipAddress],
       );
 
       if (accessKeyResult.rowCount !== 1) return res.status(400).send();
@@ -472,11 +472,11 @@ RETURNING *;`,
       rows: [{ current_token }],
     } = await db.query<{ current_token: string }>(
       `INSERT INTO lv_token_data (linkvertise_token, ip_address, useragent, lifetime) VALUES ($1, $2, $3, $4) RETURNING current_token;`,
-      [accessKey, data.ipAddress, data.userAgent, lifetime]
+      [accessKey, data.ipAddress, data.userAgent, lifetime],
     );
 
     return current_token;
-  }
+  },
 );
 
 // Validate the token
@@ -495,11 +495,11 @@ server.post(
 
     const newToken = await rotateToken(
       req.body as string,
-      getImportantData(req)
+      getImportantData(req),
     );
 
     return reply.send(newToken);
-  }
+  },
 );
 
 server.listen(
@@ -513,7 +513,7 @@ server.listen(
       process.exit();
     }
     console.log("Live at", url);
-  }
+  },
 );
 
 AsyncExitHook(async () => {

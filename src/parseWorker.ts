@@ -16,7 +16,7 @@ export default async function parseGame(exp: KruSource) {
     gameSourceDebugPath,
     `${Object.entries(exp.renamed)
       .map(([name, src]) => `window.${src}=${name}`)
-      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`
+      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`,
   );
 
   await writeFile(gameSkinsPath, exp.skins);

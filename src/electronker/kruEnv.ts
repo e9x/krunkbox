@@ -11,15 +11,15 @@ import puppeteer from "puppeteer";
 
 export default async function createKruEnv() {
   const coreDataBin = await Promise.all(
-    (
-      await readdir(coreDir)
-    ).map(async (file) => await readFile(new URL(file, coreDir)))
+    (await readdir(coreDir)).map(
+      async (file) => await readFile(new URL(file, coreDir)),
+    ),
   );
 
   const skinsDataBin = await Promise.all(
-    (
-      await readdir(skinsDir)
-    ).map(async (file) => await readFile(new URL(file, skinsDir)))
+    (await readdir(skinsDir)).map(
+      async (file) => await readFile(new URL(file, skinsDir)),
+    ),
   );
   const browser = await puppeteer.launch({
     headless: "new",
@@ -62,7 +62,7 @@ export default async function createKruEnv() {
                 /import\.meta/g,
                 `(${JSON.stringify({
                   url: spoofLoaderModuleJS,
-                })})`
+                })})`,
               )
               .replace(/export default/g, "esmExports.default = ") +
             "\n//# sourceURL=" +
@@ -121,7 +121,7 @@ export default async function createKruEnv() {
         "__filename",
         "count",
         "preload",
-        "eval(preload)"
+        "eval(preload)",
       )(module, module.exports, require, "", "", count, preload);
 
       return module.exports;
@@ -130,7 +130,7 @@ export default async function createKruEnv() {
       coreDataBin: coreDataBin.length,
       skinsDataBin: skinsDataBin.length,
     } as KruCount,
-    await readFile(new URL("./preload.js", import.meta.url), "utf-8")
+    await readFile(new URL("./preload.js", import.meta.url), "utf-8"),
   );
 
   return {
@@ -141,7 +141,7 @@ export default async function createKruEnv() {
     hashToken(token: string) {
       return exports.evaluate(
         (exports, token) => exports.hashToken(token),
-        token
+        token,
       );
     },
     source() {

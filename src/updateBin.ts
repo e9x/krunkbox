@@ -53,7 +53,7 @@ async function testLoaders(updated: Partial<Updated>) {
       updated[resource.alias] = true;
 
       await writeFile(resource.path, Buffer.from(await res.arrayBuffer()));
-    })
+    }),
   );
 }
 
@@ -79,9 +79,9 @@ const coreHeaders = {
 
 async function testCoreDat(updated: Partial<Updated>) {
   const coreData = await Promise.all(
-    (
-      await readdir(coreDir).catch(() => [])
-    ).map(async (file) => (await stat(new URL(file, coreDir))).mtimeMs)
+    (await readdir(coreDir).catch(() => [])).map(
+      async (file) => (await stat(new URL(file, coreDir))).mtimeMs,
+    ),
   );
   let splitCores = 0;
   let didUpdate = false;
@@ -92,7 +92,7 @@ async function testCoreDat(updated: Partial<Updated>) {
       {
         method: "HEAD",
         headers: coreHeaders,
-      }
+      },
     );
 
     if (!res.ok) break;
@@ -129,17 +129,17 @@ async function testCoreDat(updated: Partial<Updated>) {
       if (!res.ok || !res.body) throw new Error("Fatal error");
       await writeFile(
         new URL(`core.dat.split-${i}`, coreDir),
-        Buffer.from(await res.arrayBuffer())
+        Buffer.from(await res.arrayBuffer()),
       );
-    })
+    }),
   ).catch(console.error);
 }
 
 async function testSkins(updated: Partial<Updated>) {
   const skinsData = await Promise.all(
-    (
-      await readdir(skinsDir).catch(() => [])
-    ).map(async (file) => (await stat(new URL(file, skinsDir))).mtimeMs)
+    (await readdir(skinsDir).catch(() => [])).map(
+      async (file) => (await stat(new URL(file, skinsDir))).mtimeMs,
+    ),
   );
   let splitSkins = 0;
   let didUpdate = false;
@@ -184,9 +184,9 @@ async function testSkins(updated: Partial<Updated>) {
       if (!res.ok || !res.body) throw new Error("Fatal error");
       await writeFile(
         new URL(`skins${i}.jspck`, skinsDir),
-        Buffer.from(await res.arrayBuffer())
+        Buffer.from(await res.arrayBuffer()),
       );
-    })
+    }),
   ).catch(console.error);
 }
 

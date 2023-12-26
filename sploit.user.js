@@ -92,7 +92,7 @@
     // the hook is ran once per module
     src = src.replace(
       /,(\w+)\.l=!!\[],\1\.exports}/,
-      (match, module) => `,${module}.l=true,${dataArg}(${module})}`
+      (match, module) => `,${module}.l=true,${dataArg}(${module})}`,
     );
 
     return {
@@ -219,7 +219,7 @@
                 return headers;
               }, new Headers()),
           }),
-      })
+      }),
     );
   }
 

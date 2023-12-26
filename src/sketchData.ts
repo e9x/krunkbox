@@ -72,7 +72,7 @@ async function updateSketchData() {
 
       if (tmpSketchScript.split("\n").length > 100) {
         console.error(
-          "Detected Sketch source code. Deleting file and refusing to serve a script."
+          "Detected Sketch source code. Deleting file and refusing to serve a script.",
         );
         await unlink(sketchPath);
         return;
@@ -97,7 +97,7 @@ async function updateSketchData() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${sketchPath}. Version information won't be shown`
+        `Cannot read ${sketchPath}. Version information won't be shown`,
       );
       break;
     }
@@ -128,7 +128,7 @@ export async function updateGameData() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${gameSourcePath}. Version information won't be shown`
+        `Cannot read ${gameSourcePath}. Version information won't be shown`,
       );
       break;
     }
@@ -147,7 +147,7 @@ export async function updateGameData() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${gameSkinsPath}. Version information won't be shown`
+        `Cannot read ${gameSkinsPath}. Version information won't be shown`,
       );
       break;
     }
@@ -167,7 +167,7 @@ async function updateCompatibleChecksums() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`
+        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`,
       );
       break;
     }
@@ -181,7 +181,7 @@ updateSketchData();
 updateGameData();
 
 export const compatibleChecksumsWatcher = watch(
-  fileURLToPath(compatibleChecksumsPath)
+  fileURLToPath(compatibleChecksumsPath),
 );
 compatibleChecksumsWatcher.on("change", updateCompatibleChecksums);
 updateCompatibleChecksums();
