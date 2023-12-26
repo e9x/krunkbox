@@ -6,7 +6,6 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/server.js",
-    "purge": "node ./dist/purge.js",
     "build": "rollup -c",
     "watch": "rollup -cw"
   },
@@ -20,8 +19,6 @@
     "dotenv": "^16.3.1",
     "esbuild": "^0.19.10",
     "fastify": "^4.25.2",
-    "handlebars": "^4.7.8",
-    "pg": "^8.11.3",
     "piscina": "^4.2.1",
     "puppeteer": "^21.6.1",
     "rimraf": "^5.0.5",
@@ -37,7 +34,6 @@
     "@types/eslint-scope": "^3.7.7",
     "@types/estree": "^1.0.5",
     "@types/node": "^20.10.5",
-    "@types/pg": "^8.10.9",
     "@types/source-map-support": "^0.5.10",
     "@typescript-eslint/eslint-plugin": "^6.16.0",
     "eslint": "^8.56.0",
