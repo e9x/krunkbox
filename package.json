@@ -19,7 +19,6 @@
     "dotenv": "^16.3.1",
     "esbuild": "^0.19.11",
     "fastify": "^4.25.2",
-    "fetch-socks": "^1.2.0",
     "piscina": "^4.3.0",
     "puppeteer": "^21.7.0",
     "rimraf": "^5.0.5",
@@ -43,6 +42,7 @@
     "prettier": "^3.2.4",
     "rollup": "^4.9.5",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "undici": "^6.3.0"
   }
 }
