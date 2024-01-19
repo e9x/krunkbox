@@ -6,8 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/server.js",
-    "build": "rollup -c",
-    "watch": "rollup -cw"
+    "build": "node ./build.mjs && tsc -p ./src/tsconfig.json && tsc -p ./client/tsconfig.json"
   },
   "type": "module",
   "license": "ISC",
@@ -17,7 +16,6 @@
     "async-exit-hook": "^2.0.1",
     "chokidar": "^3.5.3",
     "dotenv": "^16.3.1",
-    "esbuild": "^0.19.11",
     "fastify": "^4.25.2",
     "fetch-socks": "^1.2.0",
     "piscina": "^4.3.0",
@@ -29,19 +27,17 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.1.1",
-    "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-typescript": "^11.1.6",
     "@types/async-exit-hook": "^2.0.2",
     "@types/eslint-scope": "^3.7.7",
     "@types/estree": "^1.0.5",
     "@types/node": "^20.11.5",
     "@types/source-map-support": "^0.5.10",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "esbuild": "^0.19.11",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "prettier": "^3.2.4",
-    "rollup": "^4.9.5",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3"
   }

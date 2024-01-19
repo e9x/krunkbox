@@ -5,10 +5,11 @@
     "strict": true,
     "sourceMap": true,
     "noEmit": true,
+    "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
   },
-  "include": ["./**/*"]
+  "include": ["./**/*"],
 }
