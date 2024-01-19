@@ -2,6 +2,7 @@ import type { PathLike } from "node:fs";
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { rimraf } from "rimraf";
+import { dispatcher } from "./env";
 
 export const binDir = new URL("../bin/", import.meta.url);
 export const loaderModuleJS = new URL("./loader.mjs", binDir);
@@ -33,7 +34,7 @@ type Updated = Record<LoaderResource["alias"] | "core" | "skins", boolean>;
 async function testLoaders(updated: Partial<Updated>) {
   await Promise.all(
     resources.map(async (resource) => {
-      const res = await fetch(resource.url);
+      const res = await fetch(resource.url, { dispatcher });
 
       if (!res.ok || !res.body)
         throw new Error(`Fatal error: Cannot fetch ${res.url}`);
@@ -53,7 +54,7 @@ async function testLoaders(updated: Partial<Updated>) {
       updated[resource.alias] = true;
 
       await writeFile(resource.path, Buffer.from(await res.arrayBuffer()));
-    }),
+    })
   );
 }
 
@@ -80,8 +81,8 @@ const coreHeaders = {
 async function testCoreDat(updated: Partial<Updated>) {
   const coreData = await Promise.all(
     (await readdir(coreDir).catch(() => [])).map(
-      async (file) => (await stat(new URL(file, coreDir))).mtimeMs,
-    ),
+      async (file) => (await stat(new URL(file, coreDir))).mtimeMs
+    )
   );
   let splitCores = 0;
   let didUpdate = false;
@@ -92,7 +93,8 @@ async function testCoreDat(updated: Partial<Updated>) {
       {
         method: "HEAD",
         headers: coreHeaders,
-      },
+        dispatcher,
+      }
     );
 
     if (!res.ok) break;
@@ -125,21 +127,22 @@ async function testCoreDat(updated: Partial<Updated>) {
     [...Array(splitCores)].map(async (_, i) => {
       const res = await fetch(`https://krunker.io/pkg/core.dat.split-${i}`, {
         headers: coreHeaders,
+        dispatcher,
       });
       if (!res.ok || !res.body) throw new Error("Fatal error");
       await writeFile(
         new URL(`core.dat.split-${i}`, coreDir),
-        Buffer.from(await res.arrayBuffer()),
+        Buffer.from(await res.arrayBuffer())
       );
-    }),
+    })
   ).catch(console.error);
 }
 
 async function testSkins(updated: Partial<Updated>) {
   const skinsData = await Promise.all(
     (await readdir(skinsDir).catch(() => [])).map(
-      async (file) => (await stat(new URL(file, skinsDir))).mtimeMs,
-    ),
+      async (file) => (await stat(new URL(file, skinsDir))).mtimeMs
+    )
   );
   let splitSkins = 0;
   let didUpdate = false;
@@ -148,6 +151,7 @@ async function testSkins(updated: Partial<Updated>) {
     const res = await fetch(`https://krunker.io/skins${splitSkins}.jspck`, {
       method: "HEAD",
       headers: coreHeaders,
+      dispatcher,
     });
 
     if (!res.ok) break;
@@ -180,13 +184,14 @@ async function testSkins(updated: Partial<Updated>) {
     [...Array(splitSkins)].map(async (_, i) => {
       const res = await fetch(`https://krunker.io/skins${i}.jspck`, {
         headers: coreHeaders,
+        dispatcher,
       });
       if (!res.ok || !res.body) throw new Error("Fatal error");
       await writeFile(
         new URL(`skins${i}.jspck`, skinsDir),
-        Buffer.from(await res.arrayBuffer()),
+        Buffer.from(await res.arrayBuffer())
       );
-    }),
+    })
   ).catch(console.error);
 }
 

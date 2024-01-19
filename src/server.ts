@@ -1,7 +1,6 @@
 import "source-map-support/register.js";
-import type { KruSource } from "./electronker/inject";
-import type { KruEnv } from "./electronker/kruEnv";
-import createKruEnv from "./electronker/kruEnv";
+import type { KruEnv } from "./kruEnv";
+import createKruEnv from "./kruEnv";
 import { development, host, port, skipUpdates } from "./env";
 import {
   getGameSource,
@@ -31,6 +30,7 @@ import { access, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 import { SemVer } from "semver";
+import { KruSource } from "~client/inject";
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;

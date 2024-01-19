@@ -1,4 +1,3 @@
-import type { KruSource } from "./electronker/inject";
 import {
   gameSkinsPath,
   gameSourceDebugPath,
@@ -7,6 +6,7 @@ import {
 import esbuild from "esbuild";
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
+import { KruSource } from "~client/inject";
 
 const myTokenArg = "WP_MMToken";
 
@@ -16,7 +16,7 @@ export default async function parseGame(exp: KruSource) {
     gameSourceDebugPath,
     `${Object.entries(exp.renamed)
       .map(([name, src]) => `window.${src}=${name}`)
-      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`,
+      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`
   );
 
   await writeFile(gameSkinsPath, exp.skins);

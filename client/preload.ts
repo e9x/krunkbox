@@ -1,6 +1,6 @@
 import { mirrorAttributes } from "./hook";
-import type { KruSource } from "./inject";
 import { magic } from "./magic";
+import { KruSource } from "./inject";
 
 function argsIsSource(args: string[]) {
   return (
@@ -22,12 +22,12 @@ export const hashToken = (token: string) =>
         if (argsIsSource(args))
           return mirrorAttributes(
             construct(args[0], `window.resolve(${args[0]})`),
-            construct(...args),
+            construct(...args)
           );
 
         return construct(...args);
       },
-    })),
+    }))
   );
 
 export const source = () =>
@@ -48,11 +48,11 @@ export const source = () =>
 
           return mirrorAttributes(
             construct("window.resolve()"),
-            construct(...args),
+            construct(...args)
           );
         }
 
         return construct(...args);
       },
-    })),
+    }))
   );

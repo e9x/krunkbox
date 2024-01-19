@@ -1,14 +1,14 @@
 import { hookContext, mirrorAttributes } from "./hook";
 import type { HookOptions } from "./hook";
-import type { KruCount } from "./inject";
+import { KruCount } from "./inject";
 
 declare const count: KruCount;
 
 const skinsDataBin = [...Array(count.skinsDataBin)].map((_, i) =>
-  fetch(`/skin?i=${i}`).then((res) => res.arrayBuffer()),
+  fetch(`/skin?i=${i}`).then((res) => res.arrayBuffer())
 );
 const coreDataBin = [...Array(count.coreDataBin)].map((_, i) =>
-  fetch(`/core?i=${i}`).then((res) => res.arrayBuffer()),
+  fetch(`/core?i=${i}`).then((res) => res.arrayBuffer())
 );
 // patched when intercepting
 const loaderModuleJSContent = fetch("/loader.js").then((res) => res.text());
@@ -42,7 +42,7 @@ interface ContentWindow {
  */
 export type CreateOptions = (
   collect: () => void,
-  helpers: { getRenamed: () => Record<string, string>; getSkins: () => string },
+  helpers: { getRenamed: () => Record<string, string>; getSkins: () => string }
 ) => MagicOptions;
 
 export async function magic(createOptions: CreateOptions) {
@@ -154,7 +154,7 @@ export async function magic(createOptions: CreateOptions) {
         this.#response = new Uint8Array(await skinsDataBin[splitID]).buffer;
       } else {
         const splitID = Number(
-          (this.#url?.match(/core.dat.split-(\d+)\?/) || [])[1],
+          (this.#url?.match(/core.dat.split-(\d+)\?/) || [])[1]
         );
 
         if (isNaN(splitID))
@@ -206,9 +206,9 @@ export async function magic(createOptions: CreateOptions) {
     "esmExports",
     "XMLHttpRequest",
     "fetch",
-    `eval(js)`,
+    `eval(js)`
   )(await loaderModuleJSContent, loader, FastXMLHttpRequest, () =>
-    Promise.resolve(),
+    Promise.resolve()
   );
 
   hookContext(contentWindow, (context) => {
@@ -225,14 +225,14 @@ export async function magic(createOptions: CreateOptions) {
           apply(thisArg, argArray) {
             if (this === Function)
               return newFunction(argArray, (...newArgArray: string[]) =>
-                applyCall(this, thisArg, newArgArray),
+                applyCall(this, thisArg, newArgArray)
               );
 
             return applyCall(this, thisArg, argArray);
           },
         } as { apply: typeof apply }
       ).apply,
-      apply,
+      apply
     );
   });
 

@@ -1,17 +1,18 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
     "target": "ESNext",
     "types": ["node"],
-    "lib": ["DOM", "ESNext"],
-    "baseUrl": "src",
+    "lib": ["ESNext"],
     "strict": true,
     "sourceMap": true,
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "paths": {
+      "~client/*": ["../client/*"]
+    }
   },
-  "include": ["src/**/*"]
+  "include": ["./**/*"]
 }

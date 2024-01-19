@@ -1,12 +1,15 @@
-import type { KruEnv } from "./electronker/kruEnv";
-import { getGameSource } from "sketchData";
+import { dispatcher } from "./env";
+import type { KruEnv } from "./kruEnv";
+import { getGameSource } from "./sketchData";
 
 export default async function testKru(kruEnv: KruEnv) {
   console.group("Test");
 
   try {
     const token = await (
-      await fetch("https://matchmaker.krunker.io/generate-token")
+      await fetch("https://matchmaker.krunker.io/generate-token", {
+        dispatcher,
+      })
     ).text();
 
     /*const token = new TextDecoder().decode(
@@ -59,14 +62,15 @@ export default async function testKru(kruEnv: KruEnv) {
           "user-agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
         },
-      },
+        dispatcher,
+      }
     );
 
     // 400 = no data query/the hash was already used
     console.log(
       "Response from seek-game:",
       r.status,
-      await r.json().catch(() => Symbol("INVALID JSON")),
+      await r.json().catch(() => Symbol("INVALID JSON"))
     );
 
     if (r.status == 520) {
