@@ -1,7 +1,7 @@
 import "source-map-support/register.js";
 import type { KruEnv } from "./kruEnv";
 import createKruEnv from "./kruEnv";
-import { development, host, port, skipUpdates } from "./env";
+import { host, port, skipUpdates } from "./env";
 import {
   getGameSource,
   getGameSourceChecksum,
@@ -13,6 +13,7 @@ import {
   getCompatibleChecksums,
   compatibleChecksumsWatcher,
   updateGameData,
+  getSketchChecksum,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
@@ -223,12 +224,16 @@ server.get(`/${userscriptName}`, (req, reply) => {
   // we should just try again ON THE SERVER because we can't just show users 425...
   if (!sketchScript) return reply.status(404).send();
 
+  const etag = `"${getSketchChecksum()}"`;
+
   reply.header(
     "content-disposition",
     `attachment; filename="${userscriptName}"`
   );
 
   reply.header("content-type", "application/javascript");
+  reply.header("etag", etag);
+
   return sketchScript;
 });
 

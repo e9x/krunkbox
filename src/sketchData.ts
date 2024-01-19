@@ -30,12 +30,17 @@ interface CompatibleChecksums {
 }
 
 let sketchVersion: undefined | string;
+let sketchChecksum: undefined | null | string;
 // null = file doesn't exist, undfined = waiting..., string = REAL
 let gameSourceChecksum: undefined | null | string;
 let gameSkinsChecksum: undefined | null | string;
 
 export function getCompatibleChecksums() {
   return compatibleChecksums;
+}
+
+export function getSketchChecksum() {
+  return sketchChecksum;
 }
 
 export function getSketchVersion() {
@@ -65,6 +70,7 @@ export function getGameSkins() {
 async function updateSketchData() {
   sketchScript = undefined;
   sketchVersion = undefined;
+  sketchChecksum = undefined;
 
   while (true)
     try {
@@ -72,13 +78,14 @@ async function updateSketchData() {
 
       if (tmpSketchScript.split("\n").length > 100) {
         console.error(
-          "Detected Sketch source code. Deleting file and refusing to serve a script.",
+          "Detected Sketch source code. Deleting file and refusing to serve a script."
         );
         await unlink(sketchPath);
         return;
       }
 
       sketchScript = tmpSketchScript;
+      sketchChecksum = generateSHA512Checksum(sketchScript);
 
       const [, matchSketchVersion] =
         sketchScript.match(/^\/\/ @version\s+(.*?)$/m) || [];
@@ -97,7 +104,7 @@ async function updateSketchData() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${sketchPath}. Version information won't be shown`,
+        `Cannot read ${sketchPath}. Version information won't be shown`
       );
       break;
     }
@@ -128,7 +135,7 @@ export async function updateGameData() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${gameSourcePath}. Version information won't be shown`,
+        `Cannot read ${gameSourcePath}. Version information won't be shown`
       );
       break;
     }
@@ -147,7 +154,7 @@ export async function updateGameData() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${gameSkinsPath}. Version information won't be shown`,
+        `Cannot read ${gameSkinsPath}. Version information won't be shown`
       );
       break;
     }
@@ -167,7 +174,7 @@ async function updateCompatibleChecksums() {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       console.error(err);
       console.log(
-        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`,
+        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`
       );
       break;
     }
@@ -181,7 +188,7 @@ updateSketchData();
 updateGameData();
 
 export const compatibleChecksumsWatcher = watch(
-  fileURLToPath(compatibleChecksumsPath),
+  fileURLToPath(compatibleChecksumsPath)
 );
 compatibleChecksumsWatcher.on("change", updateCompatibleChecksums);
 updateCompatibleChecksums();
