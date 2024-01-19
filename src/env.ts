@@ -19,7 +19,7 @@ const socksProxy = process.env.SOCKS_PROXY
 
 export const dispatcher = socksProxy
   ? socksDispatcher({
-      host: socksProxy.host,
+      host: socksProxy.hostname,
       port: Number(socksProxy.port),
       type: socksProxy.protocol === "socks5:" ? 5 : 4,
     })
