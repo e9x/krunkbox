@@ -87,7 +87,8 @@ async function updateContext() {
 
     doTest = true;
   } else {
-    if (development) console.debug("Up to date.");
+    // if (development)
+    console.debug("Up to date.");
   }
 
   try {
