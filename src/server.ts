@@ -234,6 +234,11 @@ server.get(`/${userscriptName}`, (req, reply) => {
   reply.header("content-type", "application/javascript");
   reply.header("etag", etag);
 
+  if (req.headers["if-none-match"] === etag) {
+    reply.status(304);
+    return;
+  }
+
   return sketchScript;
 });
 
