@@ -31,7 +31,7 @@ import { access, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 import { SemVer } from "semver";
-import { KruSource } from "~client/inject";
+import type { KruSource } from "~client/inject";
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;

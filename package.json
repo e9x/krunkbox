@@ -17,6 +17,7 @@
     "chokidar": "^3.5.3",
     "dotenv": "^16.3.2",
     "esbuild": "^0.19.11",
+    "esbuild-plugin-eslint": "^0.3.7",
     "fastify": "^4.25.2",
     "fetch-socks": "^1.2.0",
     "piscina": "^4.3.0",

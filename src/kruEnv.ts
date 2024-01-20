@@ -2,7 +2,7 @@ import { development } from "./env";
 import { coreDir, skinsDir, loaderModuleJS, loaderWasmPath } from "./updateBin";
 import { readFile, readdir } from "node:fs/promises";
 import puppeteer from "puppeteer";
-import { KruSource, KruCount } from "~client/inject";
+import type { KruSource, KruCount } from "~client/inject";
 
 export default async function createKruEnv() {
   const coreDataBin = await Promise.all(
@@ -101,8 +101,8 @@ export default async function createKruEnv() {
 
   const exports = await page.evaluateHandle(
     (count, preload) => {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       const module = {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-imports
         exports: {} as typeof import("~client/exports"),
       };
 

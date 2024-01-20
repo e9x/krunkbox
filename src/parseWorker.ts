@@ -6,7 +6,7 @@ import {
 import { transform } from "esbuild";
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
-import { KruSource } from "~client/inject";
+import type { KruSource } from "~client/inject";
 
 const myTokenArg = "WP_MMToken";
 

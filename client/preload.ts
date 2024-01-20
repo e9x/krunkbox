@@ -1,6 +1,6 @@
 import { mirrorAttributes } from "./hook";
 import { magic } from "./magic";
-import { KruSource } from "./inject";
+import type { KruSource } from "./inject";
 
 function argsIsSource(args: string[]) {
   return (

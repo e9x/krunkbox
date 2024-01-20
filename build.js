@@ -1,3 +1,4 @@
+import eslint from "esbuild-plugin-eslint";
 import { build } from "esbuild";
 
 await build({
@@ -10,6 +11,7 @@ await build({
   minify: true,
   packages: "external",
   tsconfig: "src/tsconfig.json",
+  plugins: [eslint()],
 });
 
 await build({
@@ -22,6 +24,7 @@ await build({
   minify: true,
   packages: "external",
   tsconfig: "src/tsconfig.json",
+  plugins: [eslint()],
 });
 
 await build({
@@ -34,4 +37,5 @@ await build({
   minify: true,
   packages: "external",
   tsconfig: "src/tsconfig.json",
+  plugins: [eslint()],
 });

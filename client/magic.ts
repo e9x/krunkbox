@@ -1,6 +1,6 @@
 import { hookContext, mirrorAttributes } from "./hook";
 import type { HookOptions } from "./hook";
-import { KruCount } from "./inject";
+import type { KruCount } from "./inject";
 
 declare const count: KruCount;
 
