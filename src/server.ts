@@ -126,7 +126,7 @@ async function updateContext() {
 
 updateContext();
 
-setInterval(updateContext, 60e3 * 4);
+const updateInterval = setInterval(updateContext, 60e3 * 10);
 
 const server = fastify({ logger: { level: "error" } });
 
@@ -296,4 +296,5 @@ AsyncExitHook(async () => {
   await server.close();
   await compatibleChecksumsWatcher.close();
   await sketchWatcher.close();
+  clearInterval(updateInterval);
 });
