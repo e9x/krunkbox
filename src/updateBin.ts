@@ -68,14 +68,14 @@ const coreHeaders = {
   get: "cheat",
   pragma: "no-cache",
   referer: "https://krunker.io/",
-  "sec-ch-ua": '"Chromium";v="111", "Not(A:Brand";v="8"',
+  "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120"',
   "sec-ch-ua-mobile": "?0",
   "sec-ch-ua-platform": '"Linux"',
   "sec-fetch-dest": "empty",
   "sec-fetch-mode": "cors",
   "sec-fetch-site": "same-origin",
   "user-agent":
-    "Mozilla/5.0 (X11; Fedora; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 };
 
 async function testCoreDat(updated: Partial<Updated>) {
