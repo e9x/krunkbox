@@ -3,7 +3,7 @@ import {
   gameSourceDebugPath,
   gameSourcePath,
 } from "./sketchDataPaths";
-import esbuild from "esbuild";
+import { transform } from "esbuild";
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
 import { KruSource } from "~client/inject";
@@ -48,7 +48,7 @@ export default async function parseGame(exp: KruSource) {
   deobfuscated = deobfuscated.replaceAll(exp.token, myTokenArg);
 
   console.time("Minify");
-  let { code: minified } = await esbuild.transform(deobfuscated, {
+  let { code: minified } = await transform(deobfuscated, {
     minify: true,
     sourcemap: false,
     legalComments: "none",
