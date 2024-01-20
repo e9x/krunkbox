@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/server.js",
-    "build": "node ./build.mjs && tsc -p ./src/tsconfig.json && tsc -p ./client/tsconfig.json"
+    "build": "node ./build.js && tsc -p ./src/tsconfig.json && tsc -p ./client/tsconfig.json"
   },
   "type": "module",
   "license": "ISC",
