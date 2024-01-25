@@ -97,7 +97,7 @@ export default async function createKruEnv() {
   await page.goto("https://krunker.io/", { waitUntil: "domcontentloaded" });
 
   // wait for devtools
-  await new Promise((r) => setTimeout(r, 1e3));
+  // await new Promise((r) => setTimeout(r, 1e3));
 
   const exports = await page.evaluateHandle(
     (count, preload) => {

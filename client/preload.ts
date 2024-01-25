@@ -18,12 +18,8 @@ export const hashToken = (token: string) =>
       },
       generateToken: () => new TextEncoder().encode(token),
       newFunction: (args, construct) => {
-        // spoof the result of new Function() to appear like the real result
         if (argsIsSource(args))
-          return mirrorAttributes(
-            construct(args[0], `window.resolve(${args[0]})`),
-            construct(...args)
-          );
+          return construct(args[0], `window.resolve(${args[0]})`);
 
         return construct(...args);
       },
