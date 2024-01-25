@@ -21,7 +21,7 @@ import {
   gameSourcePath,
   userscriptName,
 } from "./sketchDataPaths";
-import testKru from "./test.js";
+import testKru from "./testKru";
 import updateBin, { binDir } from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
