@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/server.js",
+    "test": "npm run build && node ./dist/test.js",
     "build": "node ./build.js && tsc -p ./src/tsconfig.json && tsc -p ./client/tsconfig.json",
     "debug": "npm run build && npm start"
   },

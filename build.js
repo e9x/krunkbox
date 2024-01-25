@@ -3,6 +3,19 @@ import { build } from "esbuild";
 
 await build({
   platform: "node",
+  entryPoints: ["src/test.ts"],
+  outfile: "dist/test.js",
+  format: "esm",
+  sourcemap: true,
+  bundle: true,
+  minify: true,
+  packages: "external",
+  tsconfig: "src/tsconfig.json",
+  plugins: [eslint()],
+});
+
+await build({
+  platform: "node",
   entryPoints: ["src/server.ts"],
   outfile: "dist/server.js",
   format: "esm",
