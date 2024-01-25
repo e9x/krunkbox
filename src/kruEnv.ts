@@ -21,7 +21,8 @@ export default async function createKruEnv() {
     devtools: development,
   });
 
-  const page = await browser.newPage();
+  // use new tab
+  const [page] = await browser.pages();
 
   page.setRequestInterception(true);
 
