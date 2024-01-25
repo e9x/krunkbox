@@ -1,11 +1,21 @@
 import type { PathLike } from "node:fs";
-import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  readFile,
+  readdir,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { rimraf } from "rimraf";
 import { dispatcher } from "./env";
+import { webcrack } from "webcrack";
+import { transform } from "esbuild";
 
 export const binDir = new URL("../bin/", import.meta.url);
-export const loaderModuleJS = new URL("./loader.mjs", binDir);
+export const loaderModuleDebugJS = new URL("./loader.debug.mjs", binDir);
+export const loaderModuleJS = new URL("./loader.min.mjs", binDir);
 export const loaderWasmPath = new URL("./loader.wasm", binDir);
 export const coreDir = new URL("./cores/", binDir);
 export const skinsDir = new URL("./skins/", binDir);
@@ -20,7 +30,7 @@ const resources: LoaderResource[] = [
   {
     alias: "loader_js",
     url: "https://krunker.io/pkg/loader.mjs",
-    path: loaderModuleJS,
+    path: loaderModuleDebugJS,
   },
   {
     alias: "loader_wasm",
@@ -56,6 +66,30 @@ async function testLoaders(updated: Partial<Updated>) {
       await writeFile(resource.path, Buffer.from(await res.arrayBuffer()));
     })
   );
+
+  let minifyLoader = updated["loader_js"];
+
+  if (!minifyLoader)
+    try {
+      await access(loaderModuleJS);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+      // minify the loader if we don't have it for some reason
+      minifyLoader = true;
+    }
+
+  if (minifyLoader) {
+    let code = await readFile(loaderModuleDebugJS, "utf-8");
+    console.time("Deobfuscate loader");
+    code = (await webcrack(code)).code;
+    console.timeEnd("Deobfuscate loader");
+
+    console.time("Minify loader");
+    code = (await transform(code, { minify: true })).code;
+    console.timeEnd("Minify loader");
+
+    await writeFile(loaderModuleJS, code);
+  }
 }
 
 const coreHeaders = {

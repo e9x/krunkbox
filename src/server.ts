@@ -64,6 +64,8 @@ async function updateContext() {
   // prepare environment for testing and extracting the source
   const kruEnv = await createKruEnv();
 
+  let doParseGame = false;
+
   if (updated.core || updated.loader_js || updated.loader_wasm) {
     console.log("Game updated.");
 
@@ -76,14 +78,7 @@ async function updateContext() {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
 
-      try {
-        await parseGame(kruEnv);
-      } catch (err) {
-        console.error(err);
-        console.error("Failure parsing game.");
-        await kruEnv.collect();
-        return;
-      }
+      doParseGame = true;
     }
 
     doTest = true;
@@ -92,14 +87,19 @@ async function updateContext() {
     console.debug("Up to date.");
   }
 
-  try {
-    await access(gameSourceDebugPath);
-    await access(gameSourcePath);
-    await access(gameSkinsPath);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
-    // minify the source if we don't have it for some reason
+  if (!doParseGame)
+    try {
+      await access(gameSourceDebugPath);
+      await access(gameSourcePath);
+      await access(gameSkinsPath);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+      // minify the source if we don't have it for some reason
+      doParseGame = true;
+      doTest = true;
+    }
 
+  if (doParseGame) {
     try {
       await parseGame(kruEnv);
     } catch (err) {
@@ -108,8 +108,6 @@ async function updateContext() {
       await kruEnv.collect();
       return;
     }
-
-    doTest = true;
   }
 
   if (doTest) {
