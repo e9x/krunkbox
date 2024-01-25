@@ -17,7 +17,7 @@ export default async function createKruEnv() {
     )
   );
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: "new",
     devtools: development,
   });
 
