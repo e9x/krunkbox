@@ -1,4 +1,4 @@
-import { development } from "./env";
+import { headlessBrowser } from "./env";
 import { coreDir, skinsDir, loaderModuleJS, loaderWasmPath } from "./updateBin";
 import { readFile, readdir } from "node:fs/promises";
 import puppeteer from "puppeteer";
@@ -16,9 +16,10 @@ export default async function createKruEnv() {
       async (file) => await readFile(new URL(file, skinsDir))
     )
   );
+
   const browser = await puppeteer.launch({
-    headless: "new",
-    devtools: development,
+    headless: headlessBrowser ? "new" : false,
+    devtools: !headlessBrowser,
   });
 
   // use new tab

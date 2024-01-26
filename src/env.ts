@@ -10,6 +10,9 @@ export const host = process.env.HOST || undefined;
 
 export const development = process.env.NODE_ENV !== "production";
 
+// allow explicitly running in non headless mode
+export const headlessBrowser = process.env.NO_HEADLESS !== "true";
+
 // for quickly updating the server logic
 export const skipUpdates = process.env.SKIP_UPDATES === "true";
 
