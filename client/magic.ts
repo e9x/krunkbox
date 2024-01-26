@@ -45,16 +45,6 @@ export type CreateOptions = (
   helpers: { getRenamed: () => Record<string, string>; getSkins: () => string }
 ) => MagicOptions;
 
-const emscripten_filesystem = new Promise<IDBDatabase>((resolve) => {
-  const idbRequest = indexedDB.open("emscripten_filesystem", 1);
-  idbRequest.addEventListener("upgradeneeded", () => {
-    const db = idbRequest.result;
-    if (db.objectStoreNames.contains("FILES")) db.deleteObjectStore("FILES");
-    db.createObjectStore("FILES");
-    resolve(db);
-  });
-});
-
 export async function magic(createOptions: CreateOptions) {
   const iframe = document.createElement("iframe");
   iframe.hidden = true;
@@ -173,9 +163,9 @@ export async function magic(createOptions: CreateOptions) {
         this.#response = new Uint8Array(await coreDataBin[splitID]).buffer;
       }
 
-      setTimeout(() => {
+      (async () => {
         if (this.onload) this.onload(new ProgressEvent("load"));
-      });
+      })();
     }
     #url = "";
     #readyState = 0;
@@ -223,11 +213,28 @@ export async function magic(createOptions: CreateOptions) {
 
   hookContext(contentWindow, (context) => {
     const { newFunction } = options;
-    if (!newFunction) return;
 
-    const { Function } = context;
-    const { apply } = Function.prototype;
-    const applyCall = Function.prototype.call.bind(apply);
+    if (newFunction) {
+      const { Function } = context;
+      const { apply } = Function.prototype;
+      const applyCall = Function.prototype.call.bind(apply);
+
+      context.Function.prototype.apply = mirrorAttributes(
+        (
+          {
+            apply(thisArg, argArray) {
+              if (this === Function)
+                return newFunction(argArray, (...newArgArray: string[]) =>
+                  applyCall(this, thisArg, newArgArray)
+                );
+
+              return applyCall(this, thisArg, argArray);
+            },
+          } as { apply: typeof apply }
+        ).apply,
+        apply
+      );
+    }
 
     const { open } = context.indexedDB;
 
@@ -238,34 +245,15 @@ export async function magic(createOptions: CreateOptions) {
             if (name !== "emscripten_filesystem") throw new Error("BAD IDB");
 
             return {
-              set onsuccess(
-                cb: (e: { target: { result: IDBDatabase } }) => void
-              ) {
-                emscripten_filesystem.then((db) =>
-                  cb({ target: { result: db } })
-                );
+              // always trigger an error
+              set onerror(cb: () => void) {
+                cb();
               },
             } as unknown as IDBRequest;
           },
         } as { open: typeof open }
       ).open,
       open
-    );
-
-    context.Function.prototype.apply = mirrorAttributes(
-      (
-        {
-          apply(thisArg, argArray) {
-            if (this === Function)
-              return newFunction(argArray, (...newArgArray: string[]) =>
-                applyCall(this, thisArg, newArgArray)
-              );
-
-            return applyCall(this, thisArg, argArray);
-          },
-        } as { apply: typeof apply }
-      ).apply,
-      apply
     );
   });
 
