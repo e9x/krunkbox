@@ -1,4 +1,4 @@
-import { binDir } from "./updateBin";
+import { binDir } from "./kruPaths";
 
 export const gameSourceDebugPath = new URL("./game.debug.js", binDir);
 export const gameSourcePath = new URL("./game.min.js", binDir);

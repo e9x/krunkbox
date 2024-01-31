@@ -22,7 +22,7 @@ import {
   userscriptName,
 } from "./sketchDataPaths";
 import testKru from "./testKru";
-import updateBin, { binDir } from "./updateBin";
+import updateBin from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import AsyncExitHook from "async-exit-hook";
@@ -32,6 +32,7 @@ import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 import { SemVer } from "semver";
 import type { KruSource } from "~client/inject";
+import { binDir } from "./kruPaths";
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;

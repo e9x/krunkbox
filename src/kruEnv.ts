@@ -1,5 +1,5 @@
 import { headlessBrowser } from "./env";
-import { coreDir, skinsDir, loaderModuleJS, loaderWasmPath } from "./updateBin";
+import { coreDir, skinsDir, loaderModuleJS, loaderWasmPath } from "./kruPaths";
 import { readFile, readdir } from "node:fs/promises";
 import puppeteer from "puppeteer";
 import type { KruSource, KruCount } from "~client/inject";
