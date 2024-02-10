@@ -84,6 +84,16 @@ async function updateSketchData() {
         return;
       }
 
+      try {
+        new Function(tmpSketchScript);
+      } catch (err) {
+        // hopefully the script is still being uploaded and will be valid in one second
+        console.error("Invalid sketch code uploaded");
+        console.error(err);
+        await sleep(1e3);
+        continue;
+      }
+
       sketchScript = tmpSketchScript;
       sketchChecksum = generateSHA512Checksum(sketchScript);
 
