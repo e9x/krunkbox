@@ -22,6 +22,7 @@ import {
   userscriptName,
 } from "./sketchDataPaths";
 import testKru from "./testKru";
+import type { Updated } from "./updateBin";
 import updateBin from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
@@ -60,7 +61,13 @@ async function updateContext() {
 
   let doTest = false;
 
-  const updated = await updateBin();
+  const updated = (await updateBin().catch((err) => {
+    console.error("Failure updating");
+    console.error(err);
+    return false;
+  })) as false | Partial<Updated>;
+
+  if (!updated) return;
 
   // prepare environment for testing and extracting the source
   const kruEnv = await createKruEnv();

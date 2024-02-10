@@ -40,7 +40,10 @@ const resources: LoaderResource[] = [
   },
 ];
 
-type Updated = Record<LoaderResource["alias"] | "core" | "skins", boolean>;
+export type Updated = Record<
+  LoaderResource["alias"] | "core" | "skins",
+  boolean
+>;
 
 async function testLoaders(updated: Partial<Updated>) {
   await Promise.all(
