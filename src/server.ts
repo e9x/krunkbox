@@ -151,10 +151,14 @@ interface SketchVersion {
   updateURL: string;
 }
 
+const alwaysUpToDate = true;
+
 function sketchUpdated(supportedGame?: string) {
   if (!supportedGame) return;
 
   if (!skipUpdates && didTest && !testPassed) return false;
+
+  if (alwaysUpToDate) return true;
 
   const gameSourceChecksum = getGameSourceChecksum();
   if (typeof gameSourceChecksum !== "string") return false;
