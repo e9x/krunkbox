@@ -16,6 +16,9 @@ export const headlessBrowser = process.env.NO_HEADLESS !== "true";
 // for quickly updating the server logic
 export const skipUpdates = process.env.SKIP_UPDATES === "true";
 
+export const pgUrl = process.env.PG_URL || "";
+if (!pgUrl) throw new TypeError("INVALID PG_URL");
+
 const socksProxy = process.env.SOCKS_PROXY
   ? new URL(process.env.SOCKS_PROXY)
   : undefined;

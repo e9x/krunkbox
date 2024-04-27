@@ -34,6 +34,7 @@ import Piscina from "piscina";
 import { SemVer } from "semver";
 import type { KruSource } from "~client/inject";
 import { binDir } from "./kruPaths";
+import { db } from "./db";
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;
@@ -288,6 +289,97 @@ server.get("/skins", async (req, reply) => {
   return gameSkins;
 });
 
+db.connect();
+
+// ANALYTICS
+
+interface DBUser {
+  id: string;
+  username: string;
+}
+
+type User = [id: string, username: string];
+type UserHashMap = { [id: string]: string };
+
+const users: UserHashMap = Object.create(null);
+
+for (const user of (await db.query<DBUser>(`SELECT * FROM users;`)).rows)
+  users[user.id] = user.username;
+
+console.log(users);
+
+server.post(
+  "/tm",
+  {
+    schema: {
+      body: {
+        title: "String pair",
+        type: "object",
+        additionalProperties: {
+          type: "string",
+        },
+      },
+    },
+  },
+  async (req, reply) => {
+    const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
+    const body = req.body as UserHashMap;
+    const updateUsers: User[] = [];
+    const newUsers: User[] = [];
+
+    for (const id in body) {
+      const idN = Number(id);
+      if (!isFinite(idN)) continue;
+
+      if (id in users) {
+        console.log([ip, users[id], body[id]], "new username");
+        // new username
+        if (users[id] !== body[id]) {
+          updateUsers.push([id, body[id]]);
+          users[id] = body[id];
+        }
+      } else {
+        newUsers.push([id, body[id]]);
+        users[id] = body[id];
+      }
+    }
+
+    if (newUsers.length) {
+      const values: string[] = [];
+      const queryValues =
+        "values " +
+        newUsers
+          .map((u) => {
+            const idI = values.push(u[0]);
+            const userI = values.push(u[1]);
+            return `($${idI},$${userI})`;
+          })
+          .join(",");
+      const q = `INSERT INTO users (id, username) ${queryValues};`;
+      // console.log({ q, queryValues, values });
+      await db.query(q, values);
+    }
+
+    if (updateUsers.length) {
+      const values: string[] = [];
+      const queryValues =
+        "values " +
+        updateUsers
+          .map((u) => {
+            const idI = values.push(u[0]);
+            const userI = values.push(u[1]);
+            return `($${idI},$${userI})`;
+          })
+          .join(",");
+      const q = `UPDATE users AS u SET username = c.username FROM (${queryValues} AS c(id, username) WHERE c.id = u.id;`;
+      // console.log({ q, queryValues, values });
+      await db.query(q, values);
+    }
+
+    reply.send();
+  }
+);
+
 server.listen(
   {
     ...(host ? { host } : {}),
@@ -304,6 +396,7 @@ server.listen(
 
 AsyncExitHook(async () => {
   await server.close();
+  await db.end();
   await compatibleChecksumsWatcher.close();
   await sketchWatcher.close();
   clearInterval(updateInterval);
