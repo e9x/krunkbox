@@ -96,37 +96,6 @@ export async function magic(createOptions: CreateOptions) {
     enumerable: false,
   });
 
-  /*contentWindowAny.TWEEN = {
-    update() {},
-  };
-
-  contentWindowAny.FRVR = {
-    bootstrapper: {
-      complete() {},
-      setProgress() {},
-      init() {
-        return Promise.resolve();
-      },
-    },
-    tracker: { logEvent() {}, addExtraFieldFunction() {} },
-    lifecycle: {},
-    channelCharacteristics: {},
-  };
-  contentWindowAny.loadGamNm = {};
-  contentWindowAny.loadTipsHolder = {};
-  contentWindowAny.randInt = function (n: number, o: number) {
-    return Math.floor(Math.random() * (o - n + 1)) + n;
-  };
-  contentWindowAny.Howler = { volume() {} };
-
-  contentWindowAny.m = { trust() {}, mount() {} };
-
-  contentWindow.document.open();
-  contentWindow.document.write(
-    await (await fetch("https://krunker.io/")).text()
-  );
-  contentWindow.document.close();*/
-
   const load = document.createElement("div");
   load.id = "loadingBg1";
   contentWindow.document.body.append(load);
