@@ -80,9 +80,11 @@ async function updateContext() {
 
     if (updated.core || updated.skins) {
       try {
-        await unlink(gameSourceDebugPath);
-        await unlink(gameSourcePath);
-        await unlink(gameSkinsPath);
+        await Promise.all([
+          unlink(gameSourceDebugPath),
+          unlink(gameSourcePath),
+          unlink(gameSkinsPath)
+        ]);;
       } catch (err) {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
@@ -98,9 +100,11 @@ async function updateContext() {
 
   if (!doParseGame)
     try {
-      await access(gameSourceDebugPath);
-      await access(gameSourcePath);
-      await access(gameSkinsPath);
+      await Promise.all([
+        access(gameSourceDebugPath),
+        access(gameSourcePath),
+        access(gameSkinsPath)
+      ]);
     } catch (err) {
       if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       // minify the source if we don't have it for some reason
