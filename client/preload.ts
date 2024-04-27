@@ -21,10 +21,10 @@ export const hashToken = (token: string) =>
         // spoof the result of new Function() to appear like the real result
         if (argsIsSource(args))
           return construct(args[0], `window.resolve(${args[0]})`);
-        /*  return mirrorAttributes(
-            construct(args[0], `window.resolve(${args[0]})`),
-            construct(...args)
-          );*/
+          // return mirrorAttributes(
+          //   construct(args[0], `window.resolve(${args[0]})`),
+          //   construct(...args)
+          // );
 
         return construct(...args);
       },

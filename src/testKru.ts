@@ -12,9 +12,9 @@ export default async function testKru(kruEnv: KruEnv) {
       })
     ).text();
 
-    /*const token = new TextDecoder().decode(
-      new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24])
-    );*/
+    // const token = new TextDecoder().decode(
+    //   new Uint8Array([25, 30, 17, 17, 27, 16, 16, 29, 16, 24])
+    // );
 
     console.time("Hash");
     const hash = await kruEnv.hashToken(token);
