@@ -310,7 +310,7 @@ const users: UserHashMap = Object.create(null);
 for (const user of (await db.query<DBUser>(`SELECT * FROM users;`)).rows)
   users[user.id] = user.username;
 
-console.log(users);
+// console.log(users);
 
 server.post(
   "/tm",
