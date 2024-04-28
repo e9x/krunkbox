@@ -83,8 +83,8 @@ async function updateContext() {
         await Promise.all([
           unlink(gameSourceDebugPath),
           unlink(gameSourcePath),
-          unlink(gameSkinsPath)
-        ]);;
+          unlink(gameSkinsPath),
+        ]);
       } catch (err) {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
       }
@@ -103,7 +103,7 @@ async function updateContext() {
       await Promise.all([
         access(gameSourceDebugPath),
         access(gameSourcePath),
-        access(gameSkinsPath)
+        access(gameSkinsPath),
       ]);
     } catch (err) {
       if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
@@ -336,7 +336,7 @@ server.post(
       if (!isFinite(idN)) continue;
 
       if (id in users) {
-        console.log([ip, users[id], body[id]], "new username");
+        // console.log([ip, users[id], body[id]], "new username");
         // new username
         if (users[id] !== body[id]) {
           updateUsers.push([id, body[id]]);
