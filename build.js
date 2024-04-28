@@ -15,6 +15,10 @@ await build({
       in: "src/parseWorker.ts",
       out: "parseWorker",
     },
+    {
+      in: "src/exportUsernames.ts",
+      out: "exportUsernames",
+    },
   ],
   outdir: "dist/",
   format: "esm",

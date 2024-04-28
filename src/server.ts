@@ -34,7 +34,7 @@ import Piscina from "piscina";
 import { SemVer } from "semver";
 import type { KruSource } from "~client/inject";
 import { binDir } from "./kruPaths";
-import { db } from "./db";
+import { DBUser, db } from "./db";
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;
@@ -297,92 +297,95 @@ db.connect();
 
 // ANALYTICS
 
-interface DBUser {
-  id: string;
-  username: string;
-}
+type SketchAnalyticsPlayerDat = [username: string, level: number];
+type User = [id: string, username: string, level: number];
+type UserHashMap = { [id: string]: SketchAnalyticsPlayerDat };
+const users = new Map<string, SketchAnalyticsPlayerDat>();
 
-type User = [id: string, username: string];
-type UserHashMap = { [id: string]: string };
+for (const user of (await db.query<DBUser>(`SELECT * FROM usersv2;`)).rows)
+  users.set(user.id, [user.username, user.level]);
 
-const users: UserHashMap = Object.create(null);
+const usersArray = (users: User[], values: any[]) => {
+  const seen = values.push(new Date());
+  const valuesSql =
+    "values " +
+    users
+      .map((u) => {
+        const idI = values.push(u[0]);
+        const usernameI = values.push(u[1]);
+        const levelI = values.push(u[2]);
+        return `($${idI},$${usernameI},$${levelI},$${seen})`;
+      })
+      .join(",");
 
-for (const user of (await db.query<DBUser>(`SELECT * FROM users;`)).rows)
-  users[user.id] = user.username;
+  return valuesSql;
+};
 
-// console.log(users);
+// keep the old api up
+server.post("/tm", async (req, reply) => {
+  reply.send();
+});
 
-server.post(
-  "/tm",
-  {
-    schema: {
-      body: {
-        title: "String pair",
-        type: "object",
-        additionalProperties: {
-          type: "string",
-        },
-      },
-    },
-  },
-  async (req, reply) => {
-    const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
-    const body = req.body as UserHashMap;
-    const updateUsers: User[] = [];
-    const newUsers: User[] = [];
+server.post("/to", async (req, reply) => {
+  // const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
+  const body = req.body as UserHashMap;
 
-    for (const id in body) {
-      const idN = Number(id);
-      if (!isFinite(idN)) continue;
+  if (typeof body !== "object") return reply.status(400);
 
-      if (id in users) {
-        // console.log([ip, users[id], body[id]], "new username");
-        // new username
-        if (users[id] !== body[id]) {
-          updateUsers.push([id, body[id]]);
-          users[id] = body[id];
+  const updateUsers: User[] = [];
+  const newUsers: User[] = [];
+
+  for (const id in body) {
+    if (!isFinite(Number(id))) continue;
+    const newVal = body[id];
+
+    if (
+      !Array.isArray(newVal) ||
+      newVal.length !== 2 ||
+      typeof newVal[0] !== "string" ||
+      typeof newVal[1] !== "number" ||
+      !isFinite(newVal[1])
+    )
+      return reply.status(400);
+
+    if (/^(Local User|Guest_\d+|Player_\d+|Anonymous_\d+)$/.test(newVal[0]))
+      continue;
+
+    const saved = users.get(id);
+
+    if (saved) {
+      let update = false;
+
+      // check if any vals were updated
+      for (let i = 0; i < saved.length; i++)
+        if (saved[i] !== newVal[i]) {
+          saved[i] = newVal[i];
+          update = true;
         }
-      } else {
-        newUsers.push([id, body[id]]);
-        users[id] = body[id];
-      }
-    }
 
-    if (newUsers.length) {
-      const values: string[] = [];
-      const queryValues =
-        "values " +
-        newUsers
-          .map((u) => {
-            const idI = values.push(u[0]);
-            const userI = values.push(u[1]);
-            return `($${idI},$${userI})`;
-          })
-          .join(",");
-      const q = `INSERT INTO users (id, username) ${queryValues};`;
-      // console.log({ q, queryValues, values });
-      await db.query(q, values);
+      if (update) updateUsers.push([id, newVal[0], newVal[1]]);
+    } else {
+      newUsers.push([id, newVal[0], newVal[1]]);
+      users.set(id, newVal);
     }
-
-    if (updateUsers.length) {
-      const values: string[] = [];
-      const queryValues =
-        "values " +
-        updateUsers
-          .map((u) => {
-            const idI = values.push(u[0]);
-            const userI = values.push(u[1]);
-            return `($${idI},$${userI})`;
-          })
-          .join(",");
-      const q = `UPDATE users AS u SET username = c.username FROM (${queryValues} AS c(id, username) WHERE c.id = u.id;`;
-      // console.log({ q, queryValues, values });
-      await db.query(q, values);
-    }
-
-    reply.send();
   }
-);
+
+  if (newUsers.length) {
+    const values: any[] = [];
+    const q = `INSERT INTO usersv2 (id, username, level, seen) ${usersArray(newUsers, values)};`;
+    // console.log({ q, values });
+    await db.query(q, values);
+  }
+
+  if (updateUsers.length) {
+    const values: any[] = [];
+    const q = `UPDATE usersv2 AS u SET username = c.username, level = c.level, seen = c.seen FROM (${usersArray(updateUsers, values)} AS c(id, username, level, seen) WHERE c.id = u.id;`;
+    // console.log({ q, values });
+    await db.query(q, values);
+  }
+
+  reply.send();
+});
 
 server.listen(
   {
