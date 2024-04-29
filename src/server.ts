@@ -306,7 +306,7 @@ for (const user of (await db.query<DBUser>(`SELECT * FROM usersv2;`)).rows)
   users.set(user.id, [user.username, user.level]);
 
 const usersArray = (users: User[], values: any[]) => {
-  const seen = values.push(new Date());
+  const seenI = values.push(new Date());
   const valuesSql =
     "values " +
     users
@@ -314,7 +314,7 @@ const usersArray = (users: User[], values: any[]) => {
         const idI = values.push(u[0]);
         const usernameI = values.push(u[1]);
         const levelI = values.push(u[2]);
-        return `($${idI},$${usernameI},$${levelI},$${seen})`;
+        return `($${idI},$${usernameI},$${levelI},$${seenI})`;
       })
       .join(",");
 
@@ -379,7 +379,15 @@ server.post("/to", async (req, reply) => {
 
   if (updateUsers.length) {
     const values: any[] = [];
-    const q = `UPDATE usersv2 AS u SET username = c.username, level = c.level, seen = c.seen FROM ${usersArray(updateUsers, values)} AS c(id, username, level, seen) WHERE c.id = u.id;`;
+    let q = `BEGIN;\n`;
+    const seenI = values.push(new Date());
+    for (const u of updateUsers) {
+      const idI = values.push(u[0]);
+      const usernameI = values.push(u[1]);
+      const levelI = values.push(u[2]);
+      q += `UPDATE usersv2 SET username = ${usernameI}, level = ${levelI}, seen = ${seenI} WHERE id = ${idI};\n`;
+    }
+    q += `COMMIT;`;
     // console.log({ q, values });
     await db.query(q, values);
   }
