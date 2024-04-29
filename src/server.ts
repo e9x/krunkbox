@@ -305,22 +305,6 @@ const users = new Map<string, SketchAnalyticsPlayerDat>();
 for (const user of (await db.query<DBUser>(`SELECT * FROM usersv2;`)).rows)
   users.set(user.id, [user.username, user.level]);
 
-const usersArray = (users: User[], values: any[]) => {
-  const seenI = values.push(new Date());
-  const valuesSql =
-    "values " +
-    users
-      .map((u) => {
-        const idI = values.push(u[0]);
-        const usernameI = values.push(u[1]);
-        const levelI = values.push(u[2]);
-        return `($${idI},$${usernameI},$${levelI},$${seenI})`;
-      })
-      .join(",");
-
-  return valuesSql;
-};
-
 // keep the old api up
 server.post("/tm", async (req, reply) => {
   reply.send();
@@ -373,7 +357,18 @@ server.post("/to", async (req, reply) => {
 
   if (newUsers.length) {
     const values: any[] = [];
-    const q = `INSERT INTO usersv2 (id, username, level, seen) ${usersArray(newUsers, values)};`;
+    const seenI = values.push(new Date());
+    const newUsersArray =
+      "values " +
+      newUsers
+        .map((u) => {
+          const idI = values.push(u[0]);
+          const usernameI = values.push(u[1]);
+          const levelI = values.push(u[2]);
+          return `($${idI},$${usernameI},$${levelI},$${seenI})`;
+        })
+        .join(",");
+    const q = `INSERT INTO usersv2 (id, username, level, seen) ${newUsersArray};`;
     // console.log({ q, values });
     await db.query(q, values);
   }
