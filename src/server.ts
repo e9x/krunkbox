@@ -379,7 +379,7 @@ server.post("/to", async (req, reply) => {
 
   if (updateUsers.length) {
     const values: any[] = [];
-    const q = `UPDATE usersv2 AS u SET username = c.username, level = c.level, seen = c.seen FROM (${usersArray(updateUsers, values)} AS c(id, username, level, seen) WHERE c.id = u.id;`;
+    const q = `UPDATE usersv2 AS u SET username = c.username, level = c.level, seen = c.seen FROM ${usersArray(updateUsers, values)} AS c(id, username, level, seen) WHERE c.id = u.id;`;
     // console.log({ q, values });
     await db.query(q, values);
   }
