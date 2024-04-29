@@ -336,15 +336,16 @@ server.post("/to", async (req, reply) => {
   const newUsers: User[] = [];
 
   for (const id in body) {
-    if (!isFinite(Number(id))) continue;
     const newVal = body[id];
 
     if (
+      !isFinite(Number(id)) ||
       !Array.isArray(newVal) ||
       newVal.length !== 2 ||
       typeof newVal[0] !== "string" ||
       typeof newVal[1] !== "number" ||
-      !isFinite(newVal[1])
+      !isFinite(newVal[1]) ||
+      updateUsers.length + newUsers.length > 32
     )
       return reply.status(400);
 
@@ -377,17 +378,14 @@ server.post("/to", async (req, reply) => {
     await db.query(q, values);
   }
 
-  if (updateUsers.length) {
+  // just update each row individually, don't expect too many users to be updated at once
+  for (const u of updateUsers) {
     const values: any[] = [];
-    let q = `BEGIN;\n`;
     const seenI = values.push(new Date());
-    for (const u of updateUsers) {
-      const idI = values.push(u[0]);
-      const usernameI = values.push(u[1]);
-      const levelI = values.push(u[2]);
-      q += `UPDATE usersv2 SET username = ${usernameI}, level = ${levelI}, seen = ${seenI} WHERE id = ${idI};\n`;
-    }
-    q += `COMMIT;`;
+    const idI = values.push(u[0]);
+    const usernameI = values.push(u[1]);
+    const levelI = values.push(u[2]);
+    const q = `UPDATE usersv2 SET username = ${usernameI}, level = ${levelI}, seen = ${seenI} WHERE id = ${idI};`;
     // console.log({ q, values });
     await db.query(q, values);
   }
