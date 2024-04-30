@@ -380,7 +380,7 @@ server.post("/to", async (req, reply) => {
     const idI = values.push(u[0]);
     const usernameI = values.push(u[1]);
     const levelI = values.push(u[2]);
-    const q = `UPDATE usersv2 SET username = ${usernameI}, level = ${levelI}, seen = ${seenI} WHERE id = ${idI};`;
+    const q = `UPDATE usersv2 SET username = $${usernameI}, level = $${levelI}, seen = $${seenI} WHERE id = $${idI};`;
     // console.log({ q, values });
     await db.query(q, values);
   }
