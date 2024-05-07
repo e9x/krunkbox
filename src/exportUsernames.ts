@@ -4,7 +4,9 @@ db.connect();
 
 let out = "";
 
-for (const user of (await db.query<DBUser>(`SELECT * FROM usersv2;`)).rows)
+for (const user of (
+  await db.query<DBUser>(`SELECT * FROM usersv2 WHERE level >= 12;`)
+).rows)
   out += user.username + "\n";
 
 console.log(out);
