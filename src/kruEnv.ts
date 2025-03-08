@@ -5,7 +5,7 @@ import type { KruSource } from "~client/inject";
 
 export default async function createKruEnv() {
   const browser = await puppeteer.launch({
-    headless: headlessBrowser ? "new" : false,
+    headless: headlessBrowser,
     devtools: !headlessBrowser,
   });
 
@@ -24,7 +24,6 @@ export default async function createKruEnv() {
       req.abort();
       return;
     }
-    console.log(url.href);
     req.continue();
   });
 
@@ -36,7 +35,6 @@ export default async function createKruEnv() {
   const exports = await page.evaluateHandle(
     (preload) => {
       const module = {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-imports
         exports: {} as typeof import("~client/exports"),
       };
 
@@ -53,10 +51,6 @@ export default async function createKruEnv() {
         "preload",
         "eval(preload)"
       )(module, module.exports, require, "", "", preload);
-
-      //@ts-ignore
-      //alert("kill yourself");
-      //debugger;
 
       return module.exports;
     },
