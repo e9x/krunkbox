@@ -1,4 +1,4 @@
-import { dispatcher } from "./env";
+// import { dispatcher } from "./env";
 import type { KruEnv } from "./kruEnv";
 import { getGameSource } from "./sketchData";
 
@@ -8,7 +8,7 @@ export default async function testKru(kruEnv: KruEnv) {
   try {
     const token = await (
       await fetch("https://matchmaker.krunker.io/generate-token", {
-        dispatcher,
+        // dispatcher,
       })
     ).text();
 
@@ -24,7 +24,8 @@ export default async function testKru(kruEnv: KruEnv) {
 
     // hash = hash.slice(0, 2) + "as" + hash.slice(4);
 
-    const [, version] = getGameSource()?.match(/.exports="(.*?)"/) || [];
+    const [, version] =
+      getGameSource()?.match(/then\(t=>\{\},t=>\{\}\);var Ec="(.*?)"/) || [];
 
     if (!version) {
       console.error("Failure finding game version");
@@ -61,7 +62,7 @@ export default async function testKru(kruEnv: KruEnv) {
           "user-agent":
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
-        dispatcher,
+        // dispatcher,
       }
     );
 

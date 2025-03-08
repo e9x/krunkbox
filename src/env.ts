@@ -23,6 +23,7 @@ const socksProxy = process.env.SOCKS_PROXY
   ? new URL(process.env.SOCKS_PROXY)
   : undefined;
 
+/*
 export const dispatcher = socksProxy
   ? socksDispatcher({
       host: socksProxy.hostname,
@@ -30,3 +31,4 @@ export const dispatcher = socksProxy
       type: socksProxy.protocol === "socks5:" ? 5 : 4,
     })
   : undefined;
+*/

@@ -3,10 +3,7 @@ import { magic } from "./magic";
 import type { KruSource } from "./inject";
 
 function argsIsSource(args: string[]) {
-  return (
-    args.length === 2 &&
-    (args[1].startsWith("\n(function(") || args[1].startsWith("\nfunction "))
-  );
+  return args.length === 2 && args[1].length > 5000;
 }
 
 export const hashToken = (token: string) =>
@@ -16,15 +13,16 @@ export const hashToken = (token: string) =>
         resolve(hashed);
         collect();
       },
-      generateToken: () => new TextEncoder().encode(token),
+      generateToken: () =>
+        new TextEncoder().encode(token).buffer as ArrayBuffer,
       newFunction: (args, construct) => {
         // spoof the result of new Function() to appear like the real result
         if (argsIsSource(args))
           return construct(args[0], `window.resolve(${args[0]})`);
-          // return mirrorAttributes(
-          //   construct(args[0], `window.resolve(${args[0]})`),
-          //   construct(...args)
-          // );
+        // return mirrorAttributes(
+        //   construct(args[0], `window.resolve(${args[0]})`),
+        //   construct(...args)
+        // );
 
         return construct(...args);
       },

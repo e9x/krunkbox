@@ -1,27 +1,5 @@
 import { hookContext, mirrorAttributes } from "./hook";
 import type { HookOptions } from "./hook";
-import type { KruCount } from "./inject";
-
-declare const count: KruCount;
-
-const skinsDataBin = [...Array(count.skinsDataBin)].map((_, i) =>
-  fetch(`/skin?i=${i}`).then((res) => res.arrayBuffer())
-);
-const coreDataBin = [...Array(count.coreDataBin)].map((_, i) =>
-  fetch(`/core?i=${i}`).then((res) => res.arrayBuffer())
-);
-// patched when intercepting
-const loaderModuleJSContent = fetch("/loader.js").then((res) => res.text());
-
-const modulePromise = fetch("/loader.wasm")
-  .then((res) => res.arrayBuffer())
-  .then((loaderWasmData) => WebAssembly.compile(loaderWasmData));
-
-WebAssembly.instantiateStreaming = async function (_source, importObject) {
-  const module = await modulePromise;
-  const instance = await WebAssembly.instantiate(module, importObject);
-  return { module, instance };
-};
 
 localStorage.logs = "true";
 
@@ -31,9 +9,9 @@ export interface MagicOptions {
   resolve?: (data: string) => void;
 }
 
-interface ContentWindow {
-  resolve?: MagicOptions["resolve"];
-  skinfx?: string;
+declare global {
+  var resolve: MagicOptions["resolve"];
+  var skinfx: string;
 }
 
 /**
@@ -45,142 +23,66 @@ export type CreateOptions = (
   helpers: { getRenamed: () => Record<string, string>; getSkins: () => string }
 ) => MagicOptions;
 
-export async function magic(createOptions: CreateOptions) {
-  const iframe = document.createElement("iframe");
-  iframe.hidden = true;
-  document.documentElement.append(iframe);
+export function magic(createOptions: CreateOptions) {
+  const oldKeys = Object.keys(window);
 
-  const contentWindow = iframe.contentWindow as
-    | (typeof globalThis & ContentWindow)
-    | null;
-  if (!contentWindow) throw new Error("fail");
-
-  const oldKeys = Object.keys(contentWindow);
-
-  const options = createOptions(() => iframe.remove(), {
+  const options = createOptions(() => {}, {
     getRenamed: () => {
       const found: Record<string, string> = Object.create(null);
 
       for (const key of oldKeys) {
-        const value = contentWindow[key as keyof typeof contentWindow];
+        const value = window[key as keyof typeof window];
 
         if (typeof value !== "function") continue;
 
-        for (const key2 in contentWindow) {
+        for (const key2 in window) {
           if (oldKeys.includes(key2)) continue;
-
-          if (contentWindow[key2 as keyof typeof contentWindow] === value)
-            found[key] = key2;
+          if (window[key2 as keyof typeof window] === value) found[key] = key2;
         }
       }
 
       return found;
     },
     getSkins: () => {
-      return contentWindow.skinfx || "";
+      return window.skinfx || "";
     },
   });
 
   // return some data from the script
   if (options.resolve) {
     const resolve = options.resolve;
-    contentWindow.resolve = (data: string) => resolve(data);
+    window.resolve = (data: string) => resolve(data);
   }
 
-  // they might start checking if random shit like TWEEN, FRVR, and randInt exists
+  const { open } = XMLHttpRequest.prototype;
+  // @ts-ignore
+  XMLHttpRequest.prototype.open = function (method, url, ...args) {
+    console.trace(method, url);
+    url = new URL(url, location.href).href;
+    if (url.includes("generate-token")) {
+      this.send = () =>
+        (async () => {
+          Object.defineProperty(this, "readyState", {
+            value: 4,
+          });
+          Object.defineProperty(this, "statusText", {
+            value: "OK",
+          });
+          Object.defineProperty(this, "status", {
+            value: 200,
+          });
+          Object.defineProperty(this, "response", {
+            value: await options.generateToken(),
+          });
+          setTimeout(() => {
+            //@ts-ignore
+            this.onload(new ProgressEvent("load"));
+          });
+        })();
+    } else return Reflect.apply(open, this, [method, url, ...args]);
+  };
 
-  Object.defineProperty(contentWindow.Object.prototype, "Context", {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
-    set(value) {},
-    configurable: false,
-    enumerable: false,
-  });
-
-  const load = document.createElement("div");
-  load.id = "loadingBg1";
-  contentWindow.document.body.append(load);
-
-  contentWindow.WebAssembly = WebAssembly;
-
-  interface LoaderModule {
-    default: (module?: unknown) => void;
-  }
-
-  class FastXMLHttpRequest {
-    async #send() {
-      this.#readyState = 4;
-      this.#statusText = "OK";
-      this.#status = 200;
-
-      if (this.#url.includes("generate-token")) {
-        this.#response = await options.generateToken();
-      } else if (this.#url.startsWith("./skins")) {
-        const splitID = Number((this.#url?.match(/skins(\d+).jspck/) || [])[1]);
-
-        if (isNaN(splitID))
-          throw new Error(`Unrecognized XMLHttpRequest resource: ${this.#url}`);
-
-        this.#response = new Uint8Array(await skinsDataBin[splitID]).buffer;
-      } else {
-        const splitID = Number(
-          (this.#url?.match(/core.dat.split-(\d+)\?/) || [])[1]
-        );
-
-        if (isNaN(splitID))
-          throw new Error(`Unrecognized XMLHttpRequest resource: ${this.#url}`);
-
-        this.#response = new Uint8Array(await coreDataBin[splitID]).buffer;
-      }
-
-      (async () => {
-        if (this.onload) this.onload(new ProgressEvent("load"));
-      })();
-    }
-    #url = "";
-    #readyState = 0;
-    #statusText = "";
-    #status = 0;
-    #response = new ArrayBuffer(0);
-    get readyState() {
-      return this.#readyState;
-    }
-    get statusText() {
-      return this.#statusText;
-    }
-    get status() {
-      return this.#status;
-    }
-    onload?: (event: ProgressEvent) => void;
-    setRequestHeader(name: string, value: string) {
-      if (name !== "GET" || value !== "cheat") {
-        throw new Error("BAD HEADER");
-      }
-    }
-    open(_method: string, url: string) {
-      this.#url = url;
-    }
-    get response() {
-      return this.#response;
-    }
-    send() {
-      this.#send();
-    }
-  }
-
-  const loader = {} as LoaderModule;
-  // we can hook things in the loader without messing with the context
-  // eval(js) to preserve the line #
-  new contentWindow.Function(
-    "js",
-    "esmExports",
-    "XMLHttpRequest",
-    "fetch",
-    `eval(js)`
-  )(await loaderModuleJSContent, loader, FastXMLHttpRequest, () =>
-    Promise.resolve()
-  );
-
-  hookContext(contentWindow, (context) => {
+  hookContext(window, (context) => {
     const { newFunction } = options;
 
     if (newFunction) {
@@ -204,27 +106,7 @@ export async function magic(createOptions: CreateOptions) {
         apply
       );
     }
-
-    const { open } = context.indexedDB;
-
-    context.indexedDB.open = mirrorAttributes(
-      (
-        {
-          open(name) {
-            if (name !== "emscripten_filesystem") throw new Error("BAD IDB");
-
-            return {
-              // always trigger an error
-              set onerror(cb: () => void) {
-                cb();
-              },
-            } as unknown as IDBRequest;
-          },
-        } as { open: typeof open }
-      ).open,
-      open
-    );
   });
 
-  loader.default();
+  console.log("im done hooking");
 }

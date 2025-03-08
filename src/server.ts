@@ -75,10 +75,10 @@ async function updateContext() {
 
   let doParseGame = false;
 
-  if (updated.core || updated.loader_js || updated.loader_wasm) {
+  if (updated.index_html) {
     console.log("Game updated.");
 
-    if (updated.core || updated.skins) {
+    if (updated.index_html) {
       try {
         await Promise.all([
           unlink(gameSourceDebugPath),
