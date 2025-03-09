@@ -49,6 +49,8 @@ export async function processWorkInk(
   const generateLifetime =
     (development && token === "DEBUG") || token === "3117116";
 
+  if (generateLifetime) token += Math.random().toString(36);
+
   if (!generateLifetime && !(await validWorkInkToken(token)))
     return WorkInkError.InvalidToken;
 
