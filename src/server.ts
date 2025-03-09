@@ -468,9 +468,10 @@ server.post("/to", async (req, reply) => {
     }
   }
 
+  const seen = Date.now();
+
   if (newUsers.length) {
     const values: any[] = [];
-    const seen = new Date();
     const newUsersArray =
       "values " +
       newUsers
@@ -489,7 +490,7 @@ server.post("/to", async (req, reply) => {
 
   // just update each row individually, don't expect too many users to be updated at once
   for (const u of updateUsers) {
-    updateShit.run(u[1], u[2], new Date(), u[0]);
+    updateShit.run(u[1], u[2], seen, u[0]);
   }
 
   reply.send();
