@@ -22,6 +22,7 @@
     "esbuild": "^0.25.0",
     "fastify": "^5.2.1",
     "handlebars": "^4.7.8",
+    "pg": "^8.13.3",
     "piscina": "^5.0.0-alpha.0",
     "puppeteer": "^24.4.0",
     "rimraf": "^6.0.1",
