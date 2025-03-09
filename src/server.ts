@@ -1,7 +1,7 @@
 import "source-map-support/register.js";
 import type { KruEnv } from "./kruEnv";
 import createKruEnv from "./kruEnv";
-import { host, port, skipUpdates } from "./env";
+import { host, port, skipUpdates, workinkURL } from "./env";
 import {
   getGameSource,
   getGameSourceChecksum,
@@ -28,13 +28,21 @@ import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import AsyncExitHook from "async-exit-hook";
 import fastify from "fastify";
-import { access, unlink } from "node:fs/promises";
+import { access, readFile, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 import { SemVer } from "semver";
 import type { KruSource } from "~client/inject";
 import { binDir } from "./kruPaths";
 import { DBUser, db } from "./db";
+import {
+  getImportantData,
+  incrementToken,
+  isTokenValid,
+  processWorkInk,
+  WorkInkError,
+} from "./token";
+import Handlebars from "handlebars";
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;
@@ -147,8 +155,45 @@ server.register(fastifyStatic, {
 });
 
 server.register(fastifyCors, {
-  allowedHeaders: ["content-type"],
+  allowedHeaders: ["content-type", "x-token"],
+  exposedHeaders: ["x-token"],
 });
+
+server.get("/brainrot", (req, reply) => {
+  reply.redirect(workinkURL, 307);
+});
+
+server.get(
+  "/key/:key",
+  {
+    schema: {
+      params: {
+        type: "object",
+        required: ["key"],
+        properties: {
+          key: { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, res) => {
+    const redirectPage = Handlebars.compile(
+      await readFile(
+        new URL("../redirect.handlebars", import.meta.url),
+        "utf-8"
+      )
+    );
+
+    res.header("content-type", "text/html");
+
+    res.send(
+      "<!DOCTYPE html>" +
+        redirectPage({
+          accessKey: (req.params as { key: string }).key,
+        })
+    );
+  }
+);
 
 interface SketchVersion {
   outdated: boolean;
@@ -257,43 +302,107 @@ server.get(`/${userscriptName}`, (req, reply) => {
   return sketchScript;
 });
 
-server.get("/source", async (req, reply) => {
-  const gameScript = getGameSource();
+server.get(
+  "/source",
+  {
+    schema: {
+      headers: {
+        type: "object",
+        required: ["x-token"],
+        properties: {
+          "x-token": { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, reply) => {
+    const gameScript = getGameSource();
 
-  if (!gameScript) return reply.status(404).send();
+    if (!gameScript) return reply.status(404).send();
 
-  const etag = `"${getGameSourceChecksum()}"`;
+    const xToken = req.headers["x-token"] as string;
 
-  reply.header("content-type", "application/javascript");
-  reply.header("etag", etag);
+    if (!isTokenValid(xToken, getImportantData(req)))
+      return reply.status(402).send();
 
-  if (req.headers["if-none-match"] === etag) {
-    reply.status(304);
-    return;
+    incrementToken(xToken, getImportantData(req));
+
+    const etag = `"${getGameSourceChecksum()}"`;
+
+    reply.header("content-type", "application/javascript");
+    reply.header("etag", etag);
+
+    if (req.headers["if-none-match"] === etag) {
+      reply.status(304);
+      return;
+    }
+
+    return gameScript;
   }
+);
 
-  return gameScript;
-});
+server.get(
+  "/skins",
+  {
+    schema: {
+      headers: {
+        type: "object",
+        required: ["x-token"],
+        properties: {
+          "x-token": { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, reply) => {
+    const gameSkins = getGameSkins();
 
-server.get("/skins", async (req, reply) => {
-  const gameSkins = getGameSkins();
+    if (!gameSkins) return reply.status(404).send();
 
-  if (!gameSkins) return reply.status(404).send();
+    const xToken = req.headers["x-token"] as string;
 
-  const etag = `"${getGameSkinsChecksum()}"`;
+    if (!isTokenValid(xToken, getImportantData(req)))
+      return reply.status(402).send();
 
-  reply.header("content-type", "application/octet-stream");
-  reply.header("etag", etag);
+    incrementToken(xToken, getImportantData(req));
 
-  if (req.headers["if-none-match"] === etag) {
-    reply.status(304);
-    return;
+    const etag = `"${getGameSkinsChecksum()}"`;
+
+    reply.header("content-type", "application/octet-stream");
+    reply.header("etag", etag);
+
+    if (req.headers["if-none-match"] === etag) {
+      reply.status(304);
+      return;
+    }
+
+    return gameSkins;
   }
+);
 
-  return gameSkins;
-});
+// generate a token
+server.post(
+  "/hi",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+    },
+  },
+  async (req, reply) => {
+    const token = await processWorkInk(
+      req.body as string,
+      getImportantData(req)
+    );
 
-db.connect();
+    if (token === WorkInkError.DuplicateToken) return reply.status(422).send();
+    else if (token === WorkInkError.InvalidToken)
+      return reply.status(402).send();
+
+    reply.send(token);
+  }
+);
 
 // ANALYTICS
 
@@ -302,13 +411,17 @@ type User = [id: string, username: string, level: number];
 type UserHashMap = { [id: string]: SketchAnalyticsPlayerDat };
 const users = new Map<string, SketchAnalyticsPlayerDat>();
 
-for (const user of (await db.query<DBUser>(`SELECT * FROM usersv2;`)).rows)
+for (const user of db.prepare<[], DBUser>(`SELECT * FROM usersv2;`).all())
   users.set(user.id, [user.username, user.level]);
 
 // keep the old api up
 server.post("/tm", async (req, reply) => {
   reply.send();
 });
+
+const updateShit = db.prepare(
+  `UPDATE usersv2 SET username = ?, level = ?, seen = ? WHERE id = ?;`
+);
 
 server.post("/to", async (req, reply) => {
   // const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
@@ -357,32 +470,26 @@ server.post("/to", async (req, reply) => {
 
   if (newUsers.length) {
     const values: any[] = [];
-    const seenI = values.push(new Date());
+    const seen = new Date();
     const newUsersArray =
       "values " +
       newUsers
         .map((u) => {
-          const idI = values.push(u[0]);
-          const usernameI = values.push(u[1]);
-          const levelI = values.push(u[2]);
-          return `($${idI},$${usernameI},$${levelI},$${seenI})`;
+          values.push(u[0]);
+          values.push(u[1]);
+          values.push(u[2]);
+          values.push(seen);
+          return `(?,?,?,?)`;
         })
         .join(",");
     const q = `INSERT INTO usersv2 (id, username, level, seen) ${newUsersArray};`;
     // console.log({ q, values });
-    await db.query(q, values);
+    db.prepare(q).run(...values);
   }
 
   // just update each row individually, don't expect too many users to be updated at once
   for (const u of updateUsers) {
-    const values: any[] = [];
-    const seenI = values.push(new Date());
-    const idI = values.push(u[0]);
-    const usernameI = values.push(u[1]);
-    const levelI = values.push(u[2]);
-    const q = `UPDATE usersv2 SET username = $${usernameI}, level = $${levelI}, seen = $${seenI} WHERE id = $${idI};`;
-    // console.log({ q, values });
-    await db.query(q, values);
+    updateShit.run(u[1], u[2], new Date(), u[0]);
   }
 
   reply.send();
@@ -404,7 +511,7 @@ server.listen(
 
 AsyncExitHook(async () => {
   await server.close();
-  await db.end();
+  db.close();
   await compatibleChecksumsWatcher.close();
   await sketchWatcher.close();
   clearInterval(updateInterval);

@@ -15,8 +15,11 @@ export const headlessBrowser = process.env.NO_HEADLESS !== "true";
 // for quickly updating the server logic
 export const skipUpdates = process.env.SKIP_UPDATES === "true";
 
-export const pgUrl = process.env.PG_URL || "";
-if (!pgUrl) throw new TypeError("INVALID PG_URL");
+export const workinkURL = process.env.WORKINK_URL || "";
+if (!workinkURL) throw new TypeError("INVALID WORKINK_URL");
+
+export const workinkAPI = process.env.WORKINK_API || "";
+if (!workinkAPI) throw new TypeError("Invalid WORKINK_API");
 
 /*
 export const dispatcher = socksProxy

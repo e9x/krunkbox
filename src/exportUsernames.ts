@@ -1,14 +1,12 @@
 import { DBUser, db } from "./db";
 
-db.connect();
-
 let out = "";
 
-for (const user of (
-  await db.query<DBUser>(`SELECT * FROM usersv2 WHERE level >= 12;`)
-).rows)
+for (const user of db
+  .prepare<[], DBUser>(`SELECT * FROM usersv2 WHERE level >= 12;`)
+  .all())
   out += user.username + "\n";
 
 console.log(out);
 
-await db.end();
+db.close();
