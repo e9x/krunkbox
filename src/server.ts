@@ -41,7 +41,7 @@ import {
   sketch_key,
   sketch_key_type,
   validateSketchKey,
-} from "./db";
+} from "../db";
 import Handlebars from "handlebars";
 import { randomBytes } from "node:crypto";
 

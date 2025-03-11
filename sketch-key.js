@@ -100,7 +100,6 @@ async function main() {
     "INSERT INTO sketch_keys (code,reason,init,born,duration,type) VALUES (?,?,?,?,?,?);"
   );
 
-  // Example insert statement using your prepared db function (pseudo-code)
   insertSketchKey.run(
     key.code,
     key.reason,
