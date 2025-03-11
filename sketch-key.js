@@ -97,11 +97,18 @@ async function main() {
   console.log(key);
 
   const insertSketchKey = db.prepare(
-    "INSERT INTO sketch_keys (code,reason,init,born,type) VALUES (?,?,?,?,?);"
+    "INSERT INTO sketch_keys (code,reason,init,born,duration,type) VALUES (?,?,?,?,?,?);"
   );
 
   // Example insert statement using your prepared db function (pseudo-code)
-  insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
+  insertSketchKey.run(
+    key.code,
+    key.reason,
+    key.init,
+    key.born,
+    key.duration,
+    key.type
+  );
 
   rl.close();
 }
