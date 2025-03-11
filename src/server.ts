@@ -154,15 +154,22 @@ server.post(
   async (req, reply) => {
     let code = req.body as string;
     code = code.trim();
-    if (code.length === 0) return reply.status(402).send();
+    if (code.length === 0)
+      return reply.send({
+        success: false,
+        error: ["sketch_key_validate.invalid"],
+      });
 
     let key = getSketchKey.get(code);
 
     if (key) {
       // if it alr exists and we didn't redeem it for the first time
       if (key.type === sketch_key_type.free) {
-        console.log("bitch`");
-        return reply.status(422).send();
+        // console.log("bitch`");
+        return reply.send({
+          success: false,
+          error: ["sketch_key_validate.used"],
+        });
       }
     } else {
       if (development && code === "x3") {
@@ -192,7 +199,10 @@ server.post(
         };
         insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
       } else {
-        return reply.status(402).send();
+        return reply.send({
+          success: false,
+          error: ["sketch_key_validate.invalid"],
+        });
       }
     }
 
@@ -206,7 +216,7 @@ server.post(
     };
     insertApiToken.run(token.token, token.code, token.born, token.ip);
     console.log("created api token:", token);
-    reply.send(token.code);
+    reply.send({ success: true, token: token.code });
   }
 );
 
