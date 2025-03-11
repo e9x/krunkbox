@@ -244,7 +244,7 @@ function resolveCreds(xToken: string) {
     // the key is meant to become active after it was first utilized
     // likely generated in bulk for sellpass shop or smth
     key.born = Date.now();
-    giveBirth.all(key.born!, key.code);
+    giveBirth.run(key.born!, key.code);
     console.log("gave birth", key);
   }
   return { token, key };
