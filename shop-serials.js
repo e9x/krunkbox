@@ -46,3 +46,4 @@ db.transaction(() => {
 
 console.log("done");
 await writeFile(outFile, serials.join("\n") + "\n");
+console.log("saved to", outFile);
