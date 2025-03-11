@@ -61,6 +61,8 @@ server.register(fastifyCors, {
 
 const doFreeKeys = false;
 
+console.log("krunkbox: accepting free keys:", doFreeKeys);
+
 if (doFreeKeys)
   server.get("/slavelabor", (req, res) => {
     res.redirect(workinkURL, 307);
