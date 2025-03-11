@@ -60,9 +60,12 @@ server.register(fastifyCors, {
   exposedHeaders: ["x-token"],
 });
 
-server.get("/slavelabor", (req, res) => {
-  res.redirect(workinkURL, 307);
-});
+const doFreeKeys = false;
+
+if (doFreeKeys)
+  server.get("/slavelabor", (req, res) => {
+    res.redirect(workinkURL, 307);
+  });
 
 server.get(
   "/key/:key",
@@ -186,6 +189,13 @@ server.post(
         console.log("developer key:", key);
         insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
       } else if (await validWorkInkToken(code)) {
+        if (!doFreeKeys) {
+          console.error("tried to validate workink LOL", code);
+          return reply.send({
+            success: false,
+            error: ["sketch_key_validate.invalid"],
+          });
+        }
         // insert into the database
         const init = Date.now();
         key = {
