@@ -577,13 +577,13 @@ server.get(
     if (!creds) return reply.status(403).send();
     const validateError = validateSketchKey(creds.key);
     if (typeof validateError === "string")
-      return reply.status(401).send(validateError);
+      return reply.status(403).send(validateError);
     if (
       creds.key.type === sketch_key_type.free &&
       getImportantData(req).ipAddress !== creds.token.ip
     ) {
       console.log("ip diff lol");
-      return reply.status(401).send("api_token.invalid_ip");
+      return reply.status(403).send("api_token.invalid_ip");
     }
 
     incrementSketchKey.run(creds.key.code);
@@ -625,13 +625,13 @@ server.get(
     if (!creds) return reply.status(403).send();
     const validateError = validateSketchKey(creds.key);
     if (typeof validateError === "string")
-      return reply.status(401).send(validateError);
+      return reply.status(403).send(validateError);
     if (
       creds.key.type === sketch_key_type.free &&
       getImportantData(req).ipAddress !== creds.token.ip
     ) {
       console.log("ip diff lol");
-      return reply.status(401).send("api_token.invalid_ip");
+      return reply.status(403).send("api_token.invalid_ip");
     }
 
     incrementSketchKey.run(creds.key.code);
