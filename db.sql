@@ -21,7 +21,7 @@ CREATE TABLE sketch_keys (
 
 CREATE TABLE api_tokens (
   token TEXT NOT NULL PRIMARY KEY UNIQUE,
-  code TEXT NOT NULL UNIQUE,
+  code TEXT NOT NULL,
   born DATETIME NOT NULL,
   ip TEXT NOT NULL, -- creation ip//// binding this to an ip would be annoying as fuck
   FOREIGN KEY (code) REFERENCES sketch_keys (code) 
