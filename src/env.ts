@@ -1,5 +1,9 @@
 import { config } from "dotenv";
 
+if (process.argv.includes("--dev")) process.env.NODE_ENV = "development";
+
+if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
+
 config();
 
 export const port = Number(process.env.PORT || "80");

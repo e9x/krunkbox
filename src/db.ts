@@ -20,8 +20,53 @@ db.pragma("journal_mode = WAL");
 
 export { db };
 
-export interface DBUser {
+export interface analytics_user {
   id: string;
   username: string;
   level: number;
+}
+
+export enum sketch_key_type {
+  free = 0,
+  pro = 1,
+  unlimited = 2,
+}
+
+export interface sketch_key {
+  code: string;
+  reason: string | null;
+  init: number;
+  born: number | null;
+  duration: number | null;
+  type: sketch_key_type;
+  uses: number;
+}
+
+export interface api_token {
+  token: string;
+  code: string;
+  born: number;
+  ip: string;
+}
+
+export const sketch_key_free_max_uses = 45;
+
+const MS_DAY = 60e3 * 60 * 24;
+
+export function validateSketchKey(key: sketch_key) {
+  if (!key.born) throw new Error("key not born yet! you're a pedophile!");
+
+  if (key.type === sketch_key_type.pro && key.born + key.duration! < Date.now())
+    return "sketch_key_validate.expired";
+
+  if (key.type === sketch_key_type.pro && key.born + MS_DAY < Date.now())
+    return "sketch_key_validate.expired";
+
+  if (key.type === sketch_key_type.free && key.uses >= sketch_key_free_max_uses)
+    return "sketch_key_validate.expired";
+}
+
+export interface ImportantData {
+  ipAddress: string;
+  userAgent: string;
 }

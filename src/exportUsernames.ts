@@ -1,9 +1,9 @@
-import { DBUser, db } from "./db";
+import { analytics_user, db } from "./db";
 
 let out = "";
 
 for (const user of db
-  .prepare<[], DBUser>(`SELECT * FROM usersv2 WHERE level >= 12;`)
+  .prepare<[], analytics_user>(`SELECT * FROM usersv2 WHERE level >= 12;`)
   .all())
   out += user.username + "\n";
 

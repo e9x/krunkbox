@@ -1,7 +1,7 @@
 import "source-map-support/register.js";
 import type { KruEnv } from "./kruEnv";
 import createKruEnv from "./kruEnv";
-import { host, port, skipUpdates, workinkURL } from "./env";
+import { development, host, port, skipUpdates, workinkURL } from "./env";
 import {
   getGameSource,
   getGameSourceChecksum,
@@ -27,22 +27,301 @@ import updateBin from "./updateBin";
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import AsyncExitHook from "async-exit-hook";
-import fastify from "fastify";
+import fastify, { FastifyRequest } from "fastify";
 import { access, readFile, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import Piscina from "piscina";
 import { SemVer } from "semver";
 import type { KruSource } from "~client/inject";
 import { binDir } from "./kruPaths";
-import { DBUser, db } from "./db";
 import {
-  getImportantData,
-  incrementToken,
-  isTokenValid,
-  processWorkInk,
-  WorkInkError,
-} from "./token";
+  analytics_user,
+  api_token,
+  db,
+  sketch_key,
+  sketch_key_free_max_uses,
+  sketch_key_type,
+  validateSketchKey,
+} from "./db";
 import Handlebars from "handlebars";
+import { randomBytes } from "node:crypto";
+
+console.log("krunkbox: running in:", process.env.NODE_ENV);
+
+const server = fastify({ logger: { level: "error" } });
+
+server.register(fastifyStatic, {
+  root: fileURLToPath(binDir),
+  serve: false,
+});
+
+server.register(fastifyCors, {
+  allowedHeaders: ["content-type", "x-token"],
+  exposedHeaders: ["x-token"],
+});
+
+server.get("/slavelabor", (req, res) => {
+  res.redirect(workinkURL, 307);
+});
+
+server.get(
+  "/key/:key",
+  {
+    schema: {
+      params: {
+        type: "object",
+        required: ["key"],
+        properties: {
+          key: { type: "string" },
+        },
+      },
+    },
+  },
+  async (req, res) => {
+    const redirectPage = Handlebars.compile(
+      await readFile(
+        new URL("../redirect.handlebars", import.meta.url),
+        "utf-8"
+      )
+    );
+
+    res.header("content-type", "text/html");
+
+    res.send(
+      "<!DOCTYPE html>" +
+        redirectPage({
+          accessKey: (req.params as { key: string }).key,
+        })
+    );
+  }
+);
+
+interface ImportantData {
+  ipAddress: string;
+  userAgent: string;
+}
+
+function getImportantData(req: FastifyRequest): ImportantData {
+  return {
+    ipAddress: req.headers["cf-connecting-ip"]?.toString() || req.ip,
+    userAgent: req.headers["user-agent"]?.toString() || "",
+  };
+}
+
+async function validWorkInkToken(token: string) {
+  const res = await fetch(`https://work.ink/_api/v2/token/isValid/${token}`);
+  const data = (await res.json()) as { valid: boolean };
+  //console.trace(data);
+  //data.valid = true;
+  return data.valid;
+}
+const getSketchKey = db.prepare<[code: string], sketch_key>(
+  "SELECT * FROM sketch_keys WHERE code = ?;"
+);
+
+const getApiToken = db.prepare<[token: string], api_token>(
+  "SELECT * FROM sketch_keys WHERE code = ?;"
+);
+
+const insertSketchKey = db.prepare<
+  [
+    code: string,
+    reason: string | null,
+    init: number,
+    born: number | null,
+    type: number,
+  ]
+>("INSERT INTO sketch_keys (code,reason,init,born,type) VALUES (?,?,?,?,?);");
+
+const incrementSketchKey = db.prepare<[code: string]>(
+  "UPDATE sketch_keys SET uses = uses + 1 WHERE code = ?;"
+);
+
+const insertApiToken = db.prepare<
+  [token: string, code: string, born: number, ip: string]
+>("INSERT INTO api_tokens (token,code,born,ip) VALUES (?,?,?,?);");
+
+// generate a token
+server.post(
+  "/hi",
+  {
+    schema: {
+      body: {
+        type: "string",
+      },
+    },
+  },
+  async (req, reply) => {
+    let code = req.body as string;
+    code = code.trim();
+    if (code.length === 0) return reply.status(402).send();
+
+    let key = getSketchKey.get(code);
+
+    if (key) {
+      // if it alr exists and we didn't redeem it for the first time
+      if (key.type === sketch_key_type.free) {
+        console.log("bitch`");
+        return reply.status(422).send();
+      }
+    } else {
+      if (development && code === "x3") {
+        const init = Date.now();
+        key = {
+          code: crypto.randomUUID(),
+          reason: "developer key",
+          init,
+          born: init,
+          duration: null,
+          type: sketch_key_type.unlimited,
+          uses: 0,
+        };
+        console.log("developer key:", key);
+        insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
+      } else if (await validWorkInkToken(code)) {
+        // insert into the database
+        const init = Date.now();
+        key = {
+          code,
+          reason: "work.ink key",
+          init,
+          born: init,
+          duration: null,
+          type: sketch_key_type.free,
+          uses: 0,
+        };
+        insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
+      } else {
+        return reply.status(402).send();
+      }
+    }
+
+    const importantData = getImportantData(req);
+
+    const token: api_token = {
+      token: randomBytes(16).toString("base64"),
+      code: key.code,
+      born: Date.now(),
+      ip: importantData.ipAddress,
+    };
+    insertApiToken.run(token.token, token.code, token.born, token.ip);
+    console.log("created api token:", token);
+    reply.send(token.code);
+  }
+);
+
+const giveBirth = db.prepare<[born: number, code: string]>(
+  "UPDATE sketch_keys SET born = ? WHERE code = ?;"
+);
+
+function resolveCreds(xToken: string) {
+  const token = getApiToken.get(xToken);
+  if (!token) return;
+  const key = getSketchKey.get(token.code)!;
+  if (key.born === null) {
+    // this marks the first use
+    // the key is meant to become active after it was first utilized
+    // likely generated in bulk for sellpass shop or smth
+    key.born = Date.now();
+    giveBirth.all(key.born!, key.code);
+    console.log("gave birth", key);
+  }
+  return { token, key };
+}
+
+// ANALYTICS
+
+type SketchAnalyticsPlayerDat = [username: string, level: number];
+type User = [id: string, username: string, level: number];
+type UserHashMap = { [id: string]: SketchAnalyticsPlayerDat };
+const users = new Map<string, SketchAnalyticsPlayerDat>();
+
+for (const user of db
+  .prepare<[], analytics_user>(`SELECT * FROM usersv2;`)
+  .all())
+  users.set(user.id, [user.username, user.level]);
+
+// keep the old api up
+server.post("/tm", async (req, reply) => {
+  reply.send();
+});
+
+const updateShit = db.prepare(
+  `UPDATE usersv2 SET username = ?, level = ?, seen = ? WHERE id = ?;`
+);
+
+server.post("/to", async (req, reply) => {
+  // const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
+  const body = req.body as UserHashMap;
+
+  if (typeof body !== "object") return reply.status(400);
+
+  const updateUsers: User[] = [];
+  const newUsers: User[] = [];
+
+  for (const id in body) {
+    const newVal = body[id];
+
+    if (
+      !isFinite(Number(id)) ||
+      !Array.isArray(newVal) ||
+      newVal.length !== 2 ||
+      typeof newVal[0] !== "string" ||
+      typeof newVal[1] !== "number" ||
+      !isFinite(newVal[1]) ||
+      updateUsers.length + newUsers.length > 32
+    )
+      return reply.status(400);
+
+    if (/^(Local User|Guest_\d+|Player_\d+|Anonymous_\d+)$/.test(newVal[0]))
+      continue;
+
+    const saved = users.get(id);
+
+    if (saved) {
+      let update = false;
+
+      // check if any vals were updated
+      for (let i = 0; i < saved.length; i++)
+        if (saved[i] !== newVal[i]) {
+          saved[i] = newVal[i];
+          update = true;
+        }
+
+      if (update) updateUsers.push([id, newVal[0], newVal[1]]);
+    } else {
+      newUsers.push([id, newVal[0], newVal[1]]);
+      users.set(id, newVal);
+    }
+  }
+
+  const seen = Date.now();
+
+  if (newUsers.length) {
+    const values: any[] = [];
+    const newUsersArray =
+      "values " +
+      newUsers
+        .map((u) => {
+          values.push(u[0]);
+          values.push(u[1]);
+          values.push(u[2]);
+          values.push(seen);
+          return `(?,?,?,?)`;
+        })
+        .join(",");
+    const q = `INSERT INTO usersv2 (id, username, level, seen) ${newUsersArray};`;
+    // console.log({ q, values });
+    db.prepare(q).run(...values);
+  }
+
+  // just update each row individually, don't expect too many users to be updated at once
+  for (const u of updateUsers) {
+    updateShit.run(u[1], u[2], seen, u[0]);
+  }
+
+  reply.send();
+});
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;
@@ -146,54 +425,6 @@ async function updateContext() {
 updateContext();
 
 const updateInterval = setInterval(updateContext, 60e3 * 10);
-
-const server = fastify({ logger: { level: "error" } });
-
-server.register(fastifyStatic, {
-  root: fileURLToPath(binDir),
-  serve: false,
-});
-
-server.register(fastifyCors, {
-  allowedHeaders: ["content-type", "x-token"],
-  exposedHeaders: ["x-token"],
-});
-
-server.get("/brainrot", (req, reply) => {
-  reply.redirect(workinkURL, 307);
-});
-
-server.get(
-  "/key/:key",
-  {
-    schema: {
-      params: {
-        type: "object",
-        required: ["key"],
-        properties: {
-          key: { type: "string" },
-        },
-      },
-    },
-  },
-  async (req, res) => {
-    const redirectPage = Handlebars.compile(
-      await readFile(
-        new URL("../redirect.handlebars", import.meta.url),
-        "utf-8"
-      )
-    );
-
-    res.header("content-type", "text/html");
-
-    res.send(
-      "<!DOCTYPE html>" +
-        redirectPage({
-          accessKey: (req.params as { key: string }).key,
-        })
-    );
-  }
-);
 
 interface SketchVersion {
   outdated: boolean;
@@ -321,11 +552,19 @@ server.get(
     if (!gameScript) return reply.status(404).send();
 
     const xToken = req.headers["x-token"] as string;
+    const creds = resolveCreds(xToken);
+    if (!creds) return reply.status(403).send();
+    const validateError = validateSketchKey(creds.key);
+    if (typeof validateError === "string") return reply.status(401).send();
+    if (
+      creds.key.type === sketch_key_type.free &&
+      getImportantData(req).ipAddress !== creds.token.ip
+    ) {
+      console.log("ip diff lol");
+      return reply.status(401).send("api_token.invalid_ip");
+    }
 
-    if (!isTokenValid(xToken, getImportantData(req)))
-      return reply.status(402).send();
-
-    incrementToken(xToken, getImportantData(req));
+    incrementSketchKey.run(creds.key.code);
 
     const etag = `"${getGameSourceChecksum()}"`;
 
@@ -360,11 +599,20 @@ server.get(
     if (!gameSkins) return reply.status(404).send();
 
     const xToken = req.headers["x-token"] as string;
+    const creds = resolveCreds(xToken);
+    if (!creds) return reply.status(403).send();
+    const validateError = validateSketchKey(creds.key);
+    if (typeof validateError === "string")
+      return reply.status(401).send(validateError);
+    if (
+      creds.key.type === sketch_key_type.free &&
+      getImportantData(req).ipAddress !== creds.token.ip
+    ) {
+      console.log("ip diff lol");
+      return reply.status(401).send("api_token.invalid_ip");
+    }
 
-    if (!isTokenValid(xToken, getImportantData(req)))
-      return reply.status(402).send();
-
-    incrementToken(xToken, getImportantData(req));
+    incrementSketchKey.run(creds.key.code);
 
     const etag = `"${getGameSkinsChecksum()}"`;
 
@@ -379,122 +627,6 @@ server.get(
     return gameSkins;
   }
 );
-
-// generate a token
-server.post(
-  "/hi",
-  {
-    schema: {
-      body: {
-        type: "string",
-      },
-    },
-  },
-  async (req, reply) => {
-    const token = await processWorkInk(
-      req.body as string,
-      getImportantData(req)
-    );
-
-    if (token === WorkInkError.DuplicateToken) return reply.status(422).send();
-    else if (token === WorkInkError.InvalidToken)
-      return reply.status(402).send();
-
-    reply.send(token);
-  }
-);
-
-// ANALYTICS
-
-type SketchAnalyticsPlayerDat = [username: string, level: number];
-type User = [id: string, username: string, level: number];
-type UserHashMap = { [id: string]: SketchAnalyticsPlayerDat };
-const users = new Map<string, SketchAnalyticsPlayerDat>();
-
-for (const user of db.prepare<[], DBUser>(`SELECT * FROM usersv2;`).all())
-  users.set(user.id, [user.username, user.level]);
-
-// keep the old api up
-server.post("/tm", async (req, reply) => {
-  reply.send();
-});
-
-const updateShit = db.prepare(
-  `UPDATE usersv2 SET username = ?, level = ?, seen = ? WHERE id = ?;`
-);
-
-server.post("/to", async (req, reply) => {
-  // const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
-  const body = req.body as UserHashMap;
-
-  if (typeof body !== "object") return reply.status(400);
-
-  const updateUsers: User[] = [];
-  const newUsers: User[] = [];
-
-  for (const id in body) {
-    const newVal = body[id];
-
-    if (
-      !isFinite(Number(id)) ||
-      !Array.isArray(newVal) ||
-      newVal.length !== 2 ||
-      typeof newVal[0] !== "string" ||
-      typeof newVal[1] !== "number" ||
-      !isFinite(newVal[1]) ||
-      updateUsers.length + newUsers.length > 32
-    )
-      return reply.status(400);
-
-    if (/^(Local User|Guest_\d+|Player_\d+|Anonymous_\d+)$/.test(newVal[0]))
-      continue;
-
-    const saved = users.get(id);
-
-    if (saved) {
-      let update = false;
-
-      // check if any vals were updated
-      for (let i = 0; i < saved.length; i++)
-        if (saved[i] !== newVal[i]) {
-          saved[i] = newVal[i];
-          update = true;
-        }
-
-      if (update) updateUsers.push([id, newVal[0], newVal[1]]);
-    } else {
-      newUsers.push([id, newVal[0], newVal[1]]);
-      users.set(id, newVal);
-    }
-  }
-
-  const seen = Date.now();
-
-  if (newUsers.length) {
-    const values: any[] = [];
-    const newUsersArray =
-      "values " +
-      newUsers
-        .map((u) => {
-          values.push(u[0]);
-          values.push(u[1]);
-          values.push(u[2]);
-          values.push(seen);
-          return `(?,?,?,?)`;
-        })
-        .join(",");
-    const q = `INSERT INTO usersv2 (id, username, level, seen) ${newUsersArray};`;
-    // console.log({ q, values });
-    db.prepare(q).run(...values);
-  }
-
-  // just update each row individually, don't expect too many users to be updated at once
-  for (const u of updateUsers) {
-    updateShit.run(u[1], u[2], seen, u[0]);
-  }
-
-  reply.send();
-});
 
 server.listen(
   {
@@ -517,3 +649,5 @@ AsyncExitHook(async () => {
   await sketchWatcher.close();
   clearInterval(updateInterval);
 });
+
+console.log("todo: purge");

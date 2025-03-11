@@ -2,20 +2,27 @@ CREATE TABLE usersv2 (
   id TEXT NOT NULL PRIMARY KEY,
   username TEXT NOT NULL,
   level INT NOT NULL,
-  seen DATETIME DEFAULT CURRENT_TIMESTAMP
+  seen DATETIME
 );
 
-CREATE TABLE token_data (
-    id INTEGER PRIMARY KEY,
-    current_token TEXT NOT NULL,
-    previous_token TEXT,
-    workink_token TEXT NOT NULL,
-    ip_address TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    uses INTEGER NOT NULL DEFAULT 0,
-    last_diy INTEGER NOT NULL DEFAULT 0,
-    lifetime INTEGER NOT NULL DEFAULT 0,
-    UNIQUE (previous_token),
-    UNIQUE (current_token),
-    UNIQUE (workink_token)
+-- free =      valid until uses exceeds 45
+-- pro  =      valid until born + duration
+-- unlimited = valid
+
+CREATE TABLE sketch_keys (
+  code TEXT NOT NULL PRIMARY KEY UNIQUE, -- might be work.ink token
+  reason TEXT, -- why do u exist?
+  init DATETIME NOT NULL,
+  born DATETIME, -- first used
+  duration INTEGER, -- don't specify if work.ink
+  type INTEGER NOT NULL, -- 0 free, 1 pro, 2, unlimited
+  uses INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE api_tokens (
+  token TEXT NOT NULL PRIMARY KEY UNIQUE,
+  code TEXT NOT NULL UNIQUE,
+  born DATETIME NOT NULL,
+  ip TEXT NOT NULL, -- creation ip//// binding this to an ip would be annoying as fuck
+  FOREIGN KEY (code) REFERENCES sketch_keys (code) 
 );
