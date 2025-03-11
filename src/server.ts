@@ -576,7 +576,8 @@ server.get(
     const creds = resolveCreds(xToken);
     if (!creds) return reply.status(403).send();
     const validateError = validateSketchKey(creds.key);
-    if (typeof validateError === "string") return reply.status(401).send();
+    if (typeof validateError === "string")
+      return reply.status(401).send(validateError);
     if (
       creds.key.type === sketch_key_type.free &&
       getImportantData(req).ipAddress !== creds.token.ip
