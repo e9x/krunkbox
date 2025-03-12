@@ -26,3 +26,12 @@ CREATE TABLE api_tokens (
   ip TEXT NOT NULL, -- creation ip//// binding this to an ip would be annoying as fuck
   FOREIGN KEY (code) REFERENCES sketch_keys (code) 
 );
+
+CREATE TABLE key_users (
+  code TEXT NOT NULL,
+  last_token TEXT NOT NULL,
+  last_ip TEXT NOT NULL,
+  born DATETIME NOT NULL,
+  seen DATETIME NOT NULL,
+  record INTEGER NOT NULL
+);
