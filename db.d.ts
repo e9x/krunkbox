@@ -6,6 +6,7 @@ export interface analytics_user {
   id: string;
   username: string;
   level: number;
+  game: string;
 }
 
 export enum sketch_key_type {

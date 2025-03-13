@@ -2,6 +2,7 @@ CREATE TABLE usersv2 (
   id TEXT NOT NULL PRIMARY KEY,
   username TEXT NOT NULL,
   level INT NOT NULL,
+  game TEXT,
   seen DATETIME
 );
 

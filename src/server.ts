@@ -339,18 +339,31 @@ server.post(
   }
 );
 
-type SketchAnalyticsPlayerDat = [username: string, level: number];
+type SketchAnalyticsPlayerDat = [username: string, level: number, game: string];
 type User = [id: string, username: string, level: number];
-type UserHashMap = { [id: string]: SketchAnalyticsPlayerDat };
+type UserHashMap = { [id: string]: [username: string, level: number] };
 const users = new Map<string, SketchAnalyticsPlayerDat>();
 
 for (const user of db
   .prepare<[], analytics_user>(`SELECT * FROM usersv2;`)
   .all())
-  users.set(user.id, [user.username, user.level]);
+  users.set(user.id, [user.username, user.level, user.game]);
 
-const updateShit = db.prepare(
-  `UPDATE usersv2 SET username = ?, level = ?, seen = ? WHERE id = ?;`
+const updateShit = db.prepare<
+  [username: string, level: number, game: string, seen: number, id: string]
+>("UPDATE usersv2 SET username=?, level=?, game=?, seen =? WHERE id=?;");
+
+const insertSHit = db.prepare<
+  [id: string, username: string, level: number, game: string, seen: number]
+>("INSERT INTO usersv2 (id,username,level,game,seen) VALUES (?,?,?,?,?);");
+
+const updateAllShit = db.transaction(
+  (gameId: string, newUsers: User[], updateUsers: User[]) => {
+    const seen = Date.now();
+    for (const nu of newUsers)
+      insertSHit.run(nu[0], nu[1], nu[2], gameId, seen);
+    for (const u of updateUsers) updateShit.run(u[1], u[2], gameId, seen, u[0]);
+  }
 );
 
 server.post(
@@ -372,15 +385,20 @@ server.post(
     incrementSketchKey.run(creds.key.code);
 
     // const ip = req.headers["cf-connecting-ip"]?.toString() || req.ip;
-    const body = req.body as UserHashMap;
+    const body = req.body as { id: string; lol: UserHashMap };
 
-    if (typeof body !== "object") return reply.status(400);
+    if (
+      typeof body !== "object" ||
+      typeof body.id !== "string" ||
+      typeof body.lol !== "object"
+    )
+      return reply.status(400);
 
     const updateUsers: User[] = [];
     const newUsers: User[] = [];
 
-    for (const id in body) {
-      const newVal = body[id];
+    for (const id in body.lol) {
+      const newVal = body.lol[id];
 
       if (
         !isFinite(Number(id)) ||
@@ -395,6 +413,8 @@ server.post(
 
       if (/^(Local User|Guest_\d+|Player_\d+|Anonymous_\d+)$/.test(newVal[0]))
         continue;
+
+      newVal.push(id);
 
       const saved = users.get(id);
 
@@ -411,34 +431,11 @@ server.post(
         if (update) updateUsers.push([id, newVal[0], newVal[1]]);
       } else {
         newUsers.push([id, newVal[0], newVal[1]]);
-        users.set(id, newVal);
+        users.set(id, newVal as unknown as SketchAnalyticsPlayerDat);
       }
     }
 
-    const seen = Date.now();
-
-    if (newUsers.length) {
-      const values: any[] = [];
-      const newUsersArray =
-        "values " +
-        newUsers
-          .map((u) => {
-            values.push(u[0]);
-            values.push(u[1]);
-            values.push(u[2]);
-            values.push(seen);
-            return `(?,?,?,?)`;
-          })
-          .join(",");
-      const q = `INSERT INTO usersv2 (id, username, level, seen) ${newUsersArray};`;
-      // console.log({ q, values });
-      db.prepare(q).run(...values);
-    }
-
-    // just update each row individually, don't expect too many users to be updated at once
-    for (const u of updateUsers) {
-      updateShit.run(u[1], u[2], seen, u[0]);
-    }
+    updateAllShit(body.id, newUsers, updateUsers);
 
     reply.send();
   }
