@@ -38,7 +38,7 @@ const MS_DAY = 60e3 * 60 * 24;
 export function validateSketchKey(key) {
   if (!key.born) throw new Error("key not born yet! you're a pedophile!");
 
-  console.log(key);
+  // console.log(key);
 
   if (key.type === sketch_key_type.pro && key.born + key.duration < Date.now())
     return "sketch_key_validate.expired";

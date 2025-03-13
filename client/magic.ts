@@ -57,7 +57,7 @@ export function magic(createOptions: CreateOptions) {
   const { open } = XMLHttpRequest.prototype;
   // @ts-ignore
   XMLHttpRequest.prototype.open = function (method, url, ...args) {
-    console.trace(method, url);
+    // console.trace(method, url);
     url = new URL(url, location.href).href;
     if (url.includes("generate-token")) {
       this.send = () =>

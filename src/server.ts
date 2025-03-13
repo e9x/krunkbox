@@ -301,7 +301,7 @@ server.post(
     }
 
     // Log the extracted user info
-    console.log({ id, username }, creds.token);
+    // console.log({ id, username }, creds.token);
 
     const importantData = getImportantData(req);
 
