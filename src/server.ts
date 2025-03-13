@@ -68,6 +68,10 @@ if (doFreeKeys)
     res.redirect(workinkURL, 307);
   });
 
+const redirectPage = Handlebars.compile(
+  await readFile(new URL("../redirect.handlebars", import.meta.url), "utf-8")
+);
+
 server.get(
   "/key/:key",
   {
@@ -82,13 +86,6 @@ server.get(
     },
   },
   async (req, res) => {
-    const redirectPage = Handlebars.compile(
-      await readFile(
-        new URL("../redirect.handlebars", import.meta.url),
-        "utf-8"
-      )
-    );
-
     res.header("content-type", "text/html");
 
     res.send(
@@ -115,10 +112,9 @@ function getImportantData(req: FastifyRequest): ImportantData {
 async function validWorkInkToken(token: string) {
   const res = await fetch(`https://work.ink/_api/v2/token/isValid/${token}`);
   const data = (await res.json()) as { valid: boolean };
-  //console.trace(data);
-  //data.valid = true;
   return data.valid;
 }
+
 const getSketchKey = db.prepare<[code: string], sketch_key>(
   "SELECT * FROM sketch_keys WHERE code = ?;"
 );
@@ -254,13 +250,15 @@ function resolveCreds(xToken: string) {
 
 // Prepare statements for key_users
 const updateKeyUser = db.prepare<
-  [seen: number, last_ip: string, last_token: string]
+  [seen: number, last_ip: string, last_token: string, account_id: number]
 >(
-  "UPDATE key_users SET record = record + 1, seen = ?, last_ip = ? WHERE last_token = ?;"
+  "UPDATE key_users SET record = record + 1, seen = ?, last_ip = ? WHERE last_token = ? AND account_id = ?;"
 );
 const insertKeyUser = db.prepare<
   [
     code: string,
+    account_id: number,
+    account_username: string,
     last_token: string,
     last_ip: string,
     born: number,
@@ -268,7 +266,7 @@ const insertKeyUser = db.prepare<
     record: number,
   ]
 >(
-  "INSERT INTO key_users (code,last_token,last_ip,born,seen,record) VALUES (?,?,?,?,?,?);"
+  "INSERT INTO key_users (code,account_id,account_username,last_token,last_ip,born,seen,record) VALUES (?,?,?,?,?,?,?,?);"
 );
 
 // Example of a fastify (or Express) route:
@@ -315,22 +313,22 @@ server.post(
         const result = updateKeyUser.run(
           seen,
           importantData.ipAddress,
-          creds.token.token
+          creds.token.token,
+          id
         );
 
         if (result.changes === 0) {
           // No key_users row existed for this token so insert a new row.
           insertKeyUser.run(
             creds.token.code,
+            id,
+            username,
             creds.token.token,
             importantData.ipAddress,
             seen,
             seen,
             1
           );
-          // If you had extra columns for user id and username, you might run:
-          // db.prepare("INSERT INTO key_users (code, last_token, last_ip, born, seen, record, user_id, username) VALUES (?, ?, ?, datetime('now'), datetime('now'), 1, ?, ?)")
-          //   .run(apiTokenRow.code, creds.token.token, ip, id, username);
         }
       })();
       reply.status(200).send();

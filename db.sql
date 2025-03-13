@@ -29,6 +29,8 @@ CREATE TABLE api_tokens (
 
 CREATE TABLE key_users (
   code TEXT NOT NULL,
+  account_id INTEGER NOT NULL,
+  account_username TEXT NOT NULL,
   last_token TEXT NOT NULL,
   last_ip TEXT NOT NULL,
   born DATETIME NOT NULL,

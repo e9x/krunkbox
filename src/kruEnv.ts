@@ -27,7 +27,10 @@ export default async function createKruEnv() {
     req.continue();
   });
 
-  await page.goto("https://krunker.io/", { waitUntil: "domcontentloaded" });
+  await page.goto("https://krunker.io/", {
+    waitUntil: "domcontentloaded",
+    timeout: 60e3 * 2,
+  });
 
   // wait for devtools
   // await new Promise((r) => setTimeout(r, 1e3));
