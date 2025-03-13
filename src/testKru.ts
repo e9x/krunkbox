@@ -24,8 +24,7 @@ export default async function testKru(kruEnv: KruEnv) {
 
     // hash = hash.slice(0, 2) + "as" + hash.slice(4);
 
-    const [, version] =
-      getGameSource()?.match(/then\(t=>\{\},t=>\{\}\);var Ec="(.*?)"/) || [];
+    const [, version] = getGameSource()?.match(/buildVersion:"(.*?)",/) || [];
 
     if (!version) {
       console.error("Failure finding game version");

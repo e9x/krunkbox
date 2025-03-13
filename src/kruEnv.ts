@@ -14,9 +14,10 @@ export default async function createKruEnv() {
 
   page.setRequestInterception(true);
 
-  page.on("request", (req) => {
+  page.on("request", async (req) => {
     const url = new URL(req.url());
 
+    // console.log(req.resourceType(), url);
     if (
       ["font", "image", "stylesheet"].includes(req.resourceType()) ||
       url.hostname !== "krunker.io"
@@ -24,12 +25,21 @@ export default async function createKruEnv() {
       req.abort();
       return;
     }
-    req.continue();
+    const res = await fetch(url);
+
+    req.respond({
+      body: Buffer.from(await res.arrayBuffer()),
+      contentType: res.headers.get("content-type") || "",
+      status: res.status,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   });
 
   await page.goto("https://krunker.io/", {
     waitUntil: "domcontentloaded",
-    timeout: 60e3 * 2,
+    timeout: 0,
   });
 
   // wait for devtools

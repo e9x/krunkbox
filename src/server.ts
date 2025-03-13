@@ -529,7 +529,9 @@ async function updateContext() {
   }
 
   if (doTest) {
-    testPassed = await testKru(kruEnv);
+    let kruEnvTst = await createKruEnv();
+    testPassed = await testKru(kruEnvTst);
+    await kruEnvTst.collect();
     didTest = true;
   } else {
     // we have to assume these values

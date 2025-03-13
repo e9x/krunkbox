@@ -63,7 +63,7 @@ export default async function parseGame(exp: KruSource) {
 
   const [, procInputs] =
     minified.match(
-      /this\.(\w+)=function\((?:\w+,?)+\)\{var (?:\w+,?)+;this\.recon=/
+      /this\.(\w+)=function\((?:\w+,?)+\)\{var (?:[a-zA-Z$]+,?)+;this\.recon=/
     ) || [];
 
   console.log({ procInputs });
