@@ -3,17 +3,14 @@ import type { KruEnv } from "./kruEnv";
 import createKruEnv from "./kruEnv";
 import { development, host, port, skipUpdates, workinkURL } from "./env";
 import {
-  getGameSource,
-  getGameSourceChecksum,
-  getGameSkins,
   getSketchScript,
   getSketchVersion,
   sketchWatcher,
-  getGameSkinsChecksum,
   getCompatibleChecksums,
   compatibleChecksumsWatcher,
   updateGameData,
   getSketchChecksum,
+  getGameData,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
@@ -56,7 +53,7 @@ server.register(fastifyStatic, {
 
 server.register(fastifyCors, {
   allowedHeaders: ["content-type", "x-token"],
-  exposedHeaders: ["x-token"],
+  exposedHeaders: ["x-token", "x-src"],
 });
 
 const doFreeKeys = false;
@@ -285,7 +282,7 @@ server.post(
     },
   },
   async (req, reply) => {
-    const creds = await secureEndpoint(req, reply);
+    const creds = secureEndpoint(req, reply);
     if (!creds) return;
 
     // The request body is expected to be a string of the form "id:nyaa:username".
@@ -380,7 +377,7 @@ server.post(
     },
   },
   async (req, reply) => {
-    const creds = await secureEndpoint(req, reply);
+    const creds = secureEndpoint(req, reply);
     if (!creds) return;
     incrementSketchKey.run(creds.key.code);
 
@@ -561,7 +558,7 @@ function sketchUpdated(supportedGame?: string) {
 
   if (alwaysUpToDate) return true;
 
-  const gameSourceChecksum = getGameSourceChecksum();
+  const gameSourceChecksum = getGameData()?.sourceChecksum;
   if (typeof gameSourceChecksum !== "string") return false;
 
   const compat = getCompatibleChecksums();
@@ -653,8 +650,9 @@ server.get(`/${userscriptName}`, (req, reply) => {
   return sketchScript;
 });
 
+// source & skins merged
 server.get(
-  "/source",
+  "/z",
   {
     schema: {
       headers: {
@@ -666,32 +664,44 @@ server.get(
       },
     },
   },
-  async (req, reply) => {
-    const gameScript = getGameSource();
+  (req, reply) => {
+    const gameData = getGameData();
 
-    if (!gameScript) return reply.status(404).send();
+    if (!gameData) return reply.status(404).send();
 
-    const creds = await secureEndpoint(req, reply);
+    const creds = secureEndpoint(req, reply);
     if (!creds) return;
     incrementSketchKey.run(creds.key.code);
 
-    const etag = `"${getGameSourceChecksum()}"`;
+    console.log(gameData.source.byteLength);
 
-    reply.header("content-type", "application/javascript");
-    reply.header("etag", etag);
+    const etag = `"${gameData.mergedChecksum}"`;
 
+    reply.hijack();
+
+    reply.raw.setHeader("content-type", "application/javascript");
+    reply.raw.setHeader("etag", etag);
+    reply.raw.setHeader("x-src", gameData.source.byteLength.toString());
+    reply.raw.setHeader(
+      "content-length",
+      gameData.source.byteLength + gameData.skins.byteLength
+    );
     if (req.headers["if-none-match"] === etag) {
-      reply.status(304);
+      reply.raw.writeHead(304);
       return;
     }
 
-    return gameScript;
+    reply.raw.writeHead(200);
+    reply.raw.write(gameData.source);
+    reply.raw.write(gameData.skins);
+    reply.raw.end();
   }
 );
-async function secureEndpoint(
+
+function secureEndpoint(
   req: FastifyRequest,
   reply: FastifyReply
-): Promise<{ token: api_token; key: sketch_key } | undefined> {
+): { token: api_token; key: sketch_key } | undefined {
   const xToken = req.headers["x-token"] as string;
   const creds = resolveCreds(xToken);
   if (!creds) {
@@ -713,42 +723,6 @@ async function secureEndpoint(
   }
   return creds;
 }
-
-server.get(
-  "/skins",
-  {
-    schema: {
-      headers: {
-        type: "object",
-        required: ["x-token"],
-        properties: {
-          "x-token": { type: "string" },
-        },
-      },
-    },
-  },
-  async (req, reply) => {
-    const gameSkins = getGameSkins();
-
-    if (!gameSkins) return reply.status(404).send();
-
-    const creds = await secureEndpoint(req, reply);
-    if (!creds) return;
-    incrementSketchKey.run(creds.key.code);
-
-    const etag = `"${getGameSkinsChecksum()}"`;
-
-    reply.header("content-type", "application/octet-stream");
-    reply.header("etag", etag);
-
-    if (req.headers["if-none-match"] === etag) {
-      reply.status(304);
-      return;
-    }
-
-    return gameSkins;
-  }
-);
 
 server.listen(
   {

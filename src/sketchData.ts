@@ -12,9 +12,10 @@ import { fileURLToPath } from "node:url";
 // Use memory as a cache layer
 // Save both the gameSource and sketchScript in memory as soon as they're accessible
 
-let sketchScript: undefined | string;
-let gameSource: undefined | string;
-let gameSkins: undefined | string;
+let sketchScript: undefined | Buffer;
+let gameSource: undefined | Buffer;
+let gameSourceChecksum: string | null;
+let gameSkins: undefined | Buffer;
 
 let compatibleChecksums: undefined | CompatibleChecksums;
 
@@ -32,8 +33,7 @@ interface CompatibleChecksums {
 let sketchVersion: undefined | string;
 let sketchChecksum: undefined | null | string;
 // null = file doesn't exist, undfined = waiting..., string = REAL
-let gameSourceChecksum: undefined | null | string;
-let gameSkinsChecksum: undefined | null | string;
+let gameDataChecksum: undefined | null | string;
 
 export function getCompatibleChecksums() {
   return compatibleChecksums;
@@ -47,24 +47,18 @@ export function getSketchVersion() {
   return sketchVersion;
 }
 
-export function getGameSourceChecksum() {
-  return gameSourceChecksum;
-}
-
-export function getGameSkinsChecksum() {
-  return gameSkinsChecksum;
-}
-
 export function getSketchScript() {
   return sketchScript;
 }
 
-export function getGameSource() {
-  return gameSource;
-}
-
-export function getGameSkins() {
-  return gameSkins;
+export function getGameData() {
+  if (typeof gameDataChecksum !== "string" || !gameSource || !gameSkins) return;
+  return {
+    sourceChecksum: gameSourceChecksum,
+    mergedChecksum: gameDataChecksum, // cache for endpoint
+    source: gameSource,
+    skins: gameSkins,
+  };
 }
 
 async function updateSketchData() {
@@ -74,9 +68,10 @@ async function updateSketchData() {
 
   while (true)
     try {
-      const tmpSketchScript = await readFile(sketchPath, "utf-8");
+      sketchScript = await readFile(sketchPath);
 
-      if (tmpSketchScript.split("\n").length > 100) {
+      const txt = sketchScript.toString();
+      if (txt.split("\n").length > 100) {
         console.error(
           "Detected Sketch source code. Deleting file and refusing to serve a script."
         );
@@ -85,8 +80,9 @@ async function updateSketchData() {
       }
 
       try {
-        new Function(tmpSketchScript);
+        new Function(txt);
       } catch (err) {
+        sketchScript = undefined;
         // hopefully the script is still being uploaded and will be valid in one second
         console.error("Invalid sketch code uploaded");
         console.error(err);
@@ -94,11 +90,12 @@ async function updateSketchData() {
         continue;
       }
 
-      sketchScript = tmpSketchScript;
-      sketchChecksum = generateSHA512Checksum(sketchScript);
+      const hash = createHash("sha512");
+      hash.update(sketchScript);
+      sketchChecksum = hash.digest("hex");
 
       const [, matchSketchVersion] =
-        sketchScript.match(/^\/\/ @version\s+(.*?)$/m) || [];
+        txt.match(/^\/\/ @version\s+(.*?)$/m) || [];
 
       if (!matchSketchVersion) {
         console.error("Failure finding sketch version");
@@ -124,22 +121,17 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
 }
 
-function generateSHA512Checksum(string: string) {
-  const hash = createHash("sha512");
-  hash.update(string);
-  return hash.digest("hex");
-}
-
 export async function updateGameData() {
   gameSource = undefined;
   gameSourceChecksum = null;
+  const hash = createHash("sha512");
 
   while (true)
     try {
-      gameSource = await readFile(gameSourcePath, "utf-8");
-      gameSourceChecksum = generateSHA512Checksum(gameSource);
-      console.log("Game Source:", gameSourceChecksum);
-
+      gameSource = await readFile(gameSourcePath);
+      hash.update(gameSource);
+      gameSourceChecksum = hash.copy().digest("hex");
+      console.log("Game source:", gameSourceChecksum);
       break;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
@@ -151,13 +143,11 @@ export async function updateGameData() {
     }
 
   gameSkins = undefined;
-  gameSkinsChecksum = null;
 
   while (true)
     try {
-      gameSkins = await readFile(gameSkinsPath, "utf-8");
-      gameSkinsChecksum = generateSHA512Checksum(gameSkins);
-      console.log("Game Skins: ", gameSkinsChecksum);
+      gameSkins = await readFile(gameSkinsPath);
+      hash.update(gameSkins);
 
       break;
     } catch (err) {
@@ -168,6 +158,8 @@ export async function updateGameData() {
       );
       break;
     }
+
+  gameDataChecksum = hash.digest("hex");
 }
 
 async function updateCompatibleChecksums() {
