@@ -288,7 +288,8 @@ export async function routerTpLinkArcherAx3000(
 
     const sketchVersion = getSketchVersion();
 
-    console.log(body, sketchVersion);
+    console.log(req.headers["user-agent"], { body, sketchVersion });
+
     if (!sketchVersion) {
       res.writeHead(425);
       res.end();
