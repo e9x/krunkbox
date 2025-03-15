@@ -117,11 +117,12 @@ export async function routerTpLinkArcherAx3000(
   res.setHeader("access-control-request-method", "GET, POST, OPTIONS");
   // https://krunker.io
   // console.log(Object.keys(req.headers));
-  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("access-control-allow-origin", "https://krunker.io");
   res.setHeader(
     "access-control-allow-headers",
     "cache-control, content-type, x-token, accept"
   );
+  // res.setHeader("cache-control", "no-cache");
   res.setHeader("access-control-expose-headers", "etag, x-src");
   res.setHeader("access-control-max-age", "86400");
 

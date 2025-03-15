@@ -93,6 +93,7 @@ async function updateSketchData() {
       const hash = createHash("sha512");
       hash.update(sketchScript);
       sketchChecksum = hash.digest("hex");
+      console.log("sketch lol", sketchChecksum);
 
       const [, matchSketchVersion] =
         txt.match(/^\/\/ @version\s+(.*?)$/m) || [];
