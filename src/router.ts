@@ -122,7 +122,7 @@ export async function routerTpLinkArcherAx3000(
     "access-control-allow-headers",
     "cache-control, content-type, x-token, accept"
   );
-  // res.setHeader("cache-control", "no-cache");
+  res.setHeader("cache-control", "no-cache");
   res.setHeader("access-control-expose-headers", "etag, x-src");
   res.setHeader("access-control-max-age", "86400");
 
