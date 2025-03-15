@@ -116,10 +116,13 @@ export async function routerTpLinkArcherAx3000(
   const importantData = getImportantData(req);
   res.setHeader("access-control-request-method", "GET, POST, OPTIONS");
   // https://krunker.io
-  console.log(Object.keys(req.headers));
+  // console.log(Object.keys(req.headers));
   res.setHeader("access-control-allow-origin", "*");
-  res.setHeader("access-control-allow-headers", "content-type,x-token");
-  res.setHeader("access-control-expose-headers", "etag,x-src");
+  res.setHeader(
+    "access-control-allow-headers",
+    "cache-control, content-type, x-token, accept"
+  );
+  res.setHeader("access-control-expose-headers", "etag, x-src");
   res.setHeader("access-control-max-age", "86400");
 
   if (req.method === "OPTIONS") {
@@ -192,7 +195,6 @@ export async function routerTpLinkArcherAx3000(
         });
     }
 
-    console.log("lol i g ot the jkey!!", key);
     const token: api_token = {
       token: randomBytes(16).toString("base64"),
       code: key.code,
@@ -200,7 +202,6 @@ export async function routerTpLinkArcherAx3000(
       ip: importantData.ipAddress,
     };
     insertApiToken.run(token.token, token.code, token.born, token.ip);
-    console.log("created api token:", token);
     sendJSON(res, 200, { success: true, token: token.token });
   } else if (pathname === "/slop" && req.method === "POST") {
     const creds = secureEndpoint(req, res);
@@ -285,9 +286,9 @@ export async function routerTpLinkArcherAx3000(
       return;
     }
 
-    console.log(body);
-
     const sketchVersion = getSketchVersion();
+
+    console.log(body, sketchVersion);
     if (!sketchVersion) {
       res.writeHead(425);
       res.end();
@@ -347,8 +348,6 @@ export async function routerTpLinkArcherAx3000(
     const creds = secureEndpoint(req, res);
     if (!creds) return;
     incrementSketchKey.run(creds.key.code);
-
-    console.log(gameData.source.byteLength);
 
     const etag = `"${gameData.mergedChecksum}"`;
 
