@@ -116,7 +116,8 @@ export async function routerTpLinkArcherAx3000(
   const importantData = getImportantData(req);
   res.setHeader("access-control-request-method", "GET, POST, OPTIONS");
   // https://krunker.io
-  res.setHeader("access-control-allow-origin", "https://krunker.io");
+  console.log(Object.keys(req.headers));
+  res.setHeader("access-control-allow-origin", "*");
   res.setHeader("access-control-allow-headers", "content-type,x-token");
   res.setHeader("access-control-expose-headers", "etag,x-src");
   res.setHeader("access-control-max-age", "86400");
@@ -284,6 +285,8 @@ export async function routerTpLinkArcherAx3000(
       return;
     }
 
+    console.log(body);
+
     const sketchVersion = getSketchVersion();
     if (!sketchVersion) {
       res.writeHead(425);
@@ -322,6 +325,7 @@ export async function routerTpLinkArcherAx3000(
     );
 
     res.setHeader("content-type", "application/javascript");
+    res.setHeader("content-length", sketchScript.byteLength);
     res.setHeader("etag", etag);
 
     if (req.headers["if-none-match"] === etag) {
@@ -330,7 +334,7 @@ export async function routerTpLinkArcherAx3000(
       return;
     }
 
-    return sketchScript;
+    res.end(sketchScript);
   } else if (pathname === "/z") {
     const gameData = getGameData();
 
