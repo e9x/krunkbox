@@ -289,7 +289,7 @@ export async function routerTpLinkArcherAx3000(
 
     const sketchVersion = getSketchVersion();
 
-    console.log(req.headers["user-agent"], { body, sketchVersion });
+    // console.log(req.headers["user-agent"], { body, sketchVersion });
 
     if (!sketchVersion) {
       res.writeHead(425);
@@ -362,6 +362,7 @@ export async function routerTpLinkArcherAx3000(
     );
     if (req.headers["if-none-match"] === etag) {
       res.writeHead(304);
+      res.end();
       return;
     }
 
