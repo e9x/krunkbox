@@ -1,15 +1,13 @@
 import type { KruEnv } from "./kruEnv";
 import createKruEnv from "./kruEnv";
-import { development, host, port, skipUpdates, workinkURL } from "./env";
+import { development, skipUpdates, workinkURL } from "./env";
 import {
   getSketchScript,
   getSketchVersion,
-  sketchWatcher,
   getCompatibleChecksums,
-  compatibleChecksumsWatcher,
-  updateGameData,
   getSketchChecksum,
   getGameData,
+  updateGameData,
 } from "./sketchData.js";
 import {
   gameSkinsPath,
