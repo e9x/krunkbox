@@ -1,6 +1,7 @@
 import {
   gameSkinsPath,
   gameSourceDebugPath,
+  gameSourceDeobPath,
   gameSourcePath,
 } from "./sketchDataPaths";
 import { transform } from "esbuild";
@@ -47,6 +48,8 @@ export default async function parseGame(exp: KruSource) {
 
   deobfuscated = deobfuscated.replaceAll(exp.token, myTokenArg);
 
+  await writeFile(gameSourceDeobPath, deobfuscated);
+
   console.time("Minify");
   let { code: minified } = await transform(deobfuscated, {
     minify: true,
@@ -78,7 +81,7 @@ export default async function parseGame(exp: KruSource) {
   minified = minified.replaceAll(canBSeen, "canBSeen");
 
   // make sure it can be executed
-  new Function(deobfuscated);
+  new Function(minified);
 
   await writeFile(gameSourcePath, minified);
 }
