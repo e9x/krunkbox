@@ -14,7 +14,7 @@ export const host = process.env.HOST || undefined;
 export const development = process.argv.includes("--dev");
 
 // allow explicitly running in non headless mode
-export const headlessBrowser = process.env.NO_HEADLESS !== "1";
+export const headlessBrowser = process.env.SHOW_HEADLESS !== "1";
 
 // for quickly updating the server logic
 export const skipUpdates = process.env.SKIP_UPDATES === "1";

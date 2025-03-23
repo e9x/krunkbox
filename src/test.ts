@@ -1,4 +1,4 @@
-import createKruEnv from "./kruEnv";
+import createKruEnv from "./scrape";
 import testKru from "./testKru";
 import { compatibleChecksumsWatcher, sketchWatcher } from "./sketchData";
 

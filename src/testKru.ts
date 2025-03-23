@@ -1,5 +1,5 @@
 // import { dispatcher } from "./env";
-import type { KruEnv } from "./kruEnv";
+import type { KruEnv } from "./scrape";
 import { scripts } from "./sketchData";
 
 export default async function testKru(kruEnv: KruEnv) {

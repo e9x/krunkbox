@@ -1,5 +1,5 @@
-import type { KruEnv } from "./kruEnv";
-import createKruEnv from "./kruEnv";
+import type { KruEnv } from "./scrape";
+import createKruEnv from "./scrape";
 import { development, skipUpdates, workinkURL } from "./env";
 import { scripts, updateGameData } from "./sketchData.js";
 import {
