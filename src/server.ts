@@ -4,17 +4,11 @@ import { sketchWatcher, compatibleChecksumsWatcher } from "./sketchData.js";
 import AsyncExitHook from "async-exit-hook";
 import { db } from "../db";
 import http from "node:http";
-import { routerTpLinkArcherAx3000, updateInterval } from "./router";
+import { sketchRoutes, updateInterval } from "./router";
 
 const server = http.createServer();
 
-server.on("request", (req, res) => {
-  //@ts-ignore
-  routerTpLinkArcherAx3000(req, res).catch((err) => {
-    console.log("Oh nooo😨", err);
-    res.end();
-  });
-});
+sketchRoutes(server);
 
 server.on("listening", () => {
   console.log(`REEZY SEASON @ http://${host}:${port}`);

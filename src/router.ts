@@ -1,14 +1,7 @@
 import type { KruEnv } from "./kruEnv";
 import createKruEnv from "./kruEnv";
 import { development, skipUpdates, workinkURL } from "./env";
-import {
-  getSketchScript,
-  getSketchVersion,
-  getCompatibleChecksums,
-  getSketchChecksum,
-  getGameData,
-  updateGameData,
-} from "./sketchData.js";
+import { scripts, updateGameData } from "./sketchData.js";
 import {
   gameSkinsPath,
   gameSourceDebugPath,
@@ -90,27 +83,34 @@ function sketchUpdated(supportedGame?: string) {
 
   if (alwaysUpToDate) return true;
 
-  const gameSourceChecksum = getGameData()?.sourceChecksum;
-  if (typeof gameSourceChecksum !== "string") return false;
-
-  const compat = getCompatibleChecksums();
+  if (!scripts.game || !scripts.compat) return false;
+  const gameSourceChecksum = scripts.game.checksum;
 
   if (
-    gameSourceChecksum !== supportedGame &&
-    (!compat ||
-      !(supportedGame in compat) ||
-      !compat[supportedGame].includes(gameSourceChecksum))
+    (gameSourceChecksum !== supportedGame &&
+      !(supportedGame in scripts.compat)) ||
+    !scripts.compat[supportedGame].includes(gameSourceChecksum)
   )
     return false;
 
   return true;
 }
 
-export async function routerTpLinkArcherAx3000(
-  req: http.IncomingMessage & { url: string },
+export function sketchRoutes(server: http.Server) {
+  server.on("request", (req, res) => {
+    routerTpLinkArcherAx3000(req, res).catch((err) => {
+      console.log("Oh nooo😨", err);
+      res.end();
+    });
+  });
+}
+
+async function routerTpLinkArcherAx3000(
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ) {
-  const pathname = new URL(req.url, "ThugShake://skibidi.toilet:9999").pathname;
+  const pathname = new URL(req.url!, "ThugShake://skibidi.toilet:9999")
+    .pathname;
   const importantData = getImportantData(req);
   res.setHeader("access-control-request-method", "GET, POST, OPTIONS");
   // https://krunker.io
@@ -258,14 +258,6 @@ export async function routerTpLinkArcherAx3000(
       res.end();
     }
   } else if (pathname === "/sketchVersion" && req.method === "POST") {
-    /*body: {
-      type: "object",
-      required: ["currentVersion"],
-      properties: {
-        currentVersion: { type: "string" },
-        supportedGame: { type: "string" },
-      },
-    },*/
     const body = JSON.parse((await readBody(req)).toString()) as {
       currentVersion: string;
       // we should probably source the current game version from the userscript
@@ -285,48 +277,38 @@ export async function routerTpLinkArcherAx3000(
       return;
     }
 
-    const sketchVersion = getSketchVersion();
-
     // console.log(req.headers["user-agent"], { body, sketchVersion });
 
-    if (!sketchVersion) {
+    if (!scripts.sketch) {
       res.writeHead(425);
       res.end();
       return;
     }
     const reqVersion = new SemVer(body.currentVersion);
-    const myVersion = new SemVer(sketchVersion);
 
     sendJSON(res, 200, {
-      outdated: reqVersion.compare(myVersion) === -1,
-      latestVersion: sketchVersion,
+      outdated: reqVersion.compare(scripts.sketch.version) === -1,
+      latestVersion: scripts.sketch.version,
       // test didn't pass = not updated
       sketchUpdated: sketchUpdated(body.supportedGame),
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
   } else if (pathname === "/" + userscriptName && req.method === "GET") {
-    const sketchScript = getSketchScript();
-
-    // we should just try again ON THE SERVER because we can't just show users 425...
-    // what does this mean retard^
-    if (!sketchScript) {
-      // OH
-
+    if (!scripts.sketch) {
       res.writeHead(404);
       res.end();
       return;
     }
 
-    const etag = `"${getSketchChecksum()}"`;
-
     res.setHeader(
       "content-disposition",
       `attachment; filename="${userscriptName}"`
     );
-
     res.setHeader("content-type", "application/javascript");
-    res.setHeader("content-length", sketchScript.byteLength);
+    res.setHeader("content-length", scripts.sketch.source.byteLength);
+
+    const etag = `"${scripts.sketch.checksum}"`;
     res.setHeader("etag", etag);
 
     if (req.headers["if-none-match"] === etag) {
@@ -335,11 +317,9 @@ export async function routerTpLinkArcherAx3000(
       return;
     }
 
-    res.end(sketchScript);
+    res.end(scripts.sketch.source);
   } else if (pathname === "/z") {
-    const gameData = getGameData();
-
-    if (!gameData) {
+    if (!scripts.game) {
       res.writeHead(404);
       res.end();
       return;
@@ -349,15 +329,11 @@ export async function routerTpLinkArcherAx3000(
     if (!creds) return;
     incrementSketchKey.run(creds.key.code);
 
-    const etag = `"${gameData.mergedChecksum}"`;
-
     res.setHeader("content-type", "application/javascript");
+    res.setHeader("x-src", scripts.game.source.byteLength.toString());
+    const etag = `"${scripts.game.mergedChecksum}"`;
     res.setHeader("etag", etag);
-    res.setHeader("x-src", gameData.source.byteLength.toString());
-    res.setHeader(
-      "content-length",
-      gameData.source.byteLength + gameData.skins.byteLength
-    );
+    res.setHeader("content-length", scripts.game.merged.byteLength);
     if (req.headers["if-none-match"] === etag) {
       res.writeHead(304);
       res.end();
@@ -365,9 +341,7 @@ export async function routerTpLinkArcherAx3000(
     }
 
     res.writeHead(200);
-    res.write(gameData.source);
-    res.write(gameData.skins);
-    res.end();
+    res.end(scripts.game.merged);
   } else if (pathname === "/to") {
     const creds = secureEndpoint(req, res);
     if (!creds) return;

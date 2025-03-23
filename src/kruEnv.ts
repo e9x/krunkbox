@@ -1,12 +1,18 @@
 import { headlessBrowser } from "./env";
 import { readFile } from "node:fs/promises";
-import puppeteer from "puppeteer";
+import puppeteer, { type Page, type Browser, HandleFor } from "puppeteer";
 import type { KruSource } from "~client/inject";
 
 export default async function createKruEnv() {
-  const browser = await puppeteer.launch({
+  let browser: Browser | undefined = await puppeteer.launch({
     headless: headlessBrowser,
     devtools: !headlessBrowser,
+    // just made $100k off chromium command line switches 🤑
+    args: [
+      "--blink-settings=imagesEnabled=false",
+      "--mute-audio",
+      "--disable-gpu",
+    ],
   });
 
   // use new tab
@@ -17,7 +23,8 @@ export default async function createKruEnv() {
   page.on("request", async (req) => {
     const url = new URL(req.url());
 
-    // console.log(req.resourceType(), url);
+    // console.log(url.href);
+
     if (
       ["font", "image", "stylesheet"].includes(req.resourceType()) ||
       url.hostname !== "krunker.io"
@@ -25,64 +32,75 @@ export default async function createKruEnv() {
       req.abort();
       return;
     }
-    const res = await fetch(url);
 
-    req.respond({
-      body: Buffer.from(await res.arrayBuffer()),
-      contentType: res.headers.get("content-type") || "",
-      status: res.status,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    // 91.107.140.0
+
+    // const res = await fetch(url);
+
+    // req.respond({
+    //   body: Buffer.from(await res.arrayBuffer()),
+    //   contentType: res.headers.get("content-type") || "",
+    //   status: res.status,
+    //   headers: {
+    //     "Access-Control-Allow-Origin": "*",
+    //   },
+    // });
+    req.continue();
   });
 
   await page.goto("https://krunker.io/", {
-    waitUntil: "domcontentloaded",
+    //waitUntil: "domcontentloaded",
+    waitUntil: "load",
     timeout: 0,
   });
 
   // wait for devtools
   // await new Promise((r) => setTimeout(r, 1e3));
 
-  const exports = await page.evaluateHandle(
-    (preload) => {
-      const module = {
-        exports: {} as typeof import("~client/exports"),
-      };
+  let preload: HandleFor<typeof import("~client/exports")> | undefined =
+    await page.evaluateHandle(
+      (preload: string) => {
+        const module = {
+          exports: {} as typeof import("~client/exports"),
+        };
 
-      function require() {
-        throw new Error("Unsupported");
-      }
+        const world = {
+          module,
+          exports: module.exports,
+          require() {
+            throw new Error("unsupported");
+          },
+          __dirname: "",
+          __filename: "",
+          preload,
+        };
 
-      new Function(
-        "module",
-        "exports",
-        "require",
-        "__dirname",
-        "__filename",
-        "preload",
-        "eval(preload)"
-      )(module, module.exports, require, "", "", preload);
+        new Function(...Object.keys(world), "eval(preload)")(
+          ...Object.values(world)
+        );
 
-      return module.exports;
-    },
-    await readFile(new URL("./preload.js", import.meta.url), "utf-8")
-  );
+        return module.exports;
+      },
+      await readFile(new URL("./preload.js", import.meta.url), "utf-8")
+    );
 
   return {
     collect: async () => {
-      await page.close();
+      if (!browser) throw new Error("collected");
       await browser.close();
+      browser = undefined;
+      preload = undefined;
     },
     hashToken(token: string) {
-      return exports.evaluate(
-        (exports, token) => exports.hashToken(token),
+      if (!preload) throw new Error("collected");
+      return preload.evaluate(
+        (preload, token) => preload.hashToken(token),
         token
       );
     },
     source() {
-      return exports.evaluate((exports) => exports.source());
+      if (!preload) throw new Error("collected");
+      return preload.evaluate((preload) => preload.source());
     },
   } as KruEnv;
 }

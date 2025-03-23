@@ -11,13 +11,13 @@ if (isNaN(port)) throw new TypeError("Invalid PORT");
 
 export const host = process.env.HOST || undefined;
 
-export const development = process.env.NODE_ENV !== "production";
+export const development = process.argv.includes("--dev");
 
 // allow explicitly running in non headless mode
-export const headlessBrowser = process.env.NO_HEADLESS !== "true";
+export const headlessBrowser = process.env.NO_HEADLESS !== "1";
 
 // for quickly updating the server logic
-export const skipUpdates = process.env.SKIP_UPDATES === "true";
+export const skipUpdates = process.env.SKIP_UPDATES === "1";
 
 export const workinkURL = process.env.WORKINK_URL || "";
 if (!workinkURL) throw new TypeError("INVALID WORKINK_URL");

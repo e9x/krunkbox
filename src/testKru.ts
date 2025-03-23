@@ -1,6 +1,6 @@
 // import { dispatcher } from "./env";
 import type { KruEnv } from "./kruEnv";
-import { getGameData } from "./sketchData";
+import { scripts } from "./sketchData";
 
 export default async function testKru(kruEnv: KruEnv) {
   console.group("Test");
@@ -24,10 +24,14 @@ export default async function testKru(kruEnv: KruEnv) {
 
     // hash = hash.slice(0, 2) + "as" + hash.slice(4);
 
-    const [, version] =
-      getGameData()
-        ?.source.toString()
-        ?.match(/buildVersion:"(.*?)",/) || [];
+    if (!scripts.game) {
+      console.error("whats a game");
+      return false;
+    }
+
+    const gameTxt = scripts.game.source.toString();
+
+    const [, version] = gameTxt.match(/buildVersion:"(.*?)",/) || [];
 
     if (!version) {
       console.error("Failure finding game version");
