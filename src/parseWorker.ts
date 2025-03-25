@@ -1,17 +1,24 @@
+import { transform } from "esbuild";
 import {
   gameSkinsPath,
   gameSourceDebugPath,
-  gameSourceDeobPath,
   gameSourcePath,
+  gameManifest,
+  gameSourceDeobPath,
 } from "./sketchDataPaths";
-import { transform } from "esbuild";
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
 import type { KruSource } from "~client/inject";
 
 const myTokenArg = "WP_MMToken";
 
-export default async function parseGame(exp: KruSource) {
+export default async function parseGame(exp: KruSource, saveManifest = true) {
+  // massive waste of resources
+  if (saveManifest) {
+    console.log("saving game.manifest.json");
+    await writeFile(gameManifest, JSON.stringify(exp));
+  }
+
   // add helpers so the debug file can execute
   await writeFile(
     gameSourceDebugPath,
@@ -34,6 +41,44 @@ export default async function parseGame(exp: KruSource) {
   const oldLog = console.log;
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   console.log = () => {};
+
+  // try {
+  //   deobfuscated = (
+  //     await webcrack(exp.source, {
+  //       mangle: false,
+  //       jsx: false,
+  //       unminify: false,
+  //       unpack: false,
+  //       onProgress: (prog) => console.log("smoke crack:", prog),
+  //     })
+  //   ).code;
+  // } finally {
+  //   console.log = oldLog;
+  // }
+
+  // console.timeEnd("Deobfuscate");
+
+  // for (const v in exp.renamed)
+  //   deobfuscated = deobfuscated.replaceAll(exp.renamed[v], v);
+
+  // deobfuscated = deobfuscated.replaceAll(exp.token, myTokenArg);
+
+  // await writeFile(gameSourceDeobPath, deobfuscated);
+  // // await writeFile(gameSourceDeobPath, deobfuscated);
+
+  // let minified = deobfuscated;
+
+  // const isSchizo = /[iI][îiïíì]{6}/g;
+
+  // const iTray: string[] = [];
+
+  // minified = minified.replace(isSchizo, (m) => {
+  //   let ind = iTray.indexOf(m);
+  //   if (ind === -1) {
+  //     ind = iTray.push(m) - 1;
+  //   }
+  //   return "KRL" + ind.toString(16);
+  // });
 
   try {
     deobfuscated = (await webcrack(exp.source)).code;

@@ -15,6 +15,10 @@ await build({
       in: "src/parseWorker.ts",
       out: "parseWorker",
     },
+    {
+      in: "src/manifest.ts",
+      out: "manifest",
+    },
   ],
   outdir: "dist/",
   format: "esm",
