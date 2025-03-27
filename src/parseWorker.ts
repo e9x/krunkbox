@@ -81,7 +81,14 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
   // });
 
   try {
-    deobfuscated = (await webcrack(exp.source)).code;
+    deobfuscated = (
+      await webcrack(exp.source, {
+        jsx: false,
+        deobfuscate: true,
+        unminify: false,
+        unpack: false,
+      })
+    ).code;
   } finally {
     console.log = oldLog;
   }
@@ -100,7 +107,7 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
     minify: true,
     sourcemap: false,
     legalComments: "none",
-    treeShaking: true,
+    treeShaking: false,
     supported: {
       "nullish-coalescing": false,
       "optional-catch-binding": false,
@@ -108,15 +115,6 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
     },
   });
   console.timeEnd("Minify");
-
-  const [, procInputs] =
-    minified.match(
-      /this\.(\w+)=function\((?:\w+,?)+\)\{var (?:[a-zA-Z$]+,?)+;this\.recon=/
-    ) || [];
-
-  console.log({ procInputs });
-
-  minified = minified.replaceAll(procInputs, "procInputs");
 
   const [, , canBSeen] =
     minified.match(/!(\w+)\.isYou&&\1\.objInstances\){if\(\1\.(\w+)\){/) || [];
