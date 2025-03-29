@@ -116,13 +116,6 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
   });
   console.timeEnd("Minify");
 
-  const [, , canBSeen] =
-    minified.match(/!(\w+)\.isYou&&\1\.objInstances\){if\(\1\.(\w+)\){/) || [];
-
-  console.log({ canBSeen });
-
-  minified = minified.replaceAll(canBSeen, "canBSeen");
-
   // make sure it can be executed
   new Function(minified);
 
