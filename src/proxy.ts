@@ -12,4 +12,6 @@ function pickProxy() {
 
 export const proxy = pickProxy();
 
+console.log({ proxy });
+
 export const agent = (proxy.startsWith("https:") ? new HttpsProxyAgent(proxy) : proxy.startsWith("socks5://") ? new SocksProxyAgent(proxy) : undefined) as any;
