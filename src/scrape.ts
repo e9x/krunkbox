@@ -13,10 +13,10 @@ export default async function createKruEnv() {
     browser: "firefox",
     // just made $100k off chromium command line switches 🤑
     // args: [
-      // "--no-sandbox",
-      // "--blink-settings=imagesEnabled=false",
-      // "--mute-audio",
-      // "--disable-gpu",
+    // "--no-sandbox",
+    // "--blink-settings=imagesEnabled=false",
+    // "--mute-audio",
+    // "--disable-gpu",
     // ],
   });
 
@@ -33,7 +33,7 @@ export default async function createKruEnv() {
       !["krunker.io", "matchmaker.krunker.io"].includes(url.hostname) &&
       !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
-      console.log("Blocking", url.href.slice(0,48));
+      console.log("Blocking", url.href.slice(0, 48));
       req.abort();
       return;
     }
@@ -41,15 +41,21 @@ export default async function createKruEnv() {
     // 91.107.140.0
 
     const res = await fetch(url, { agent: agent });
-
-    req.respond({
+    const fake = {
       body: Buffer.from(await res.arrayBuffer()),
       contentType: res.headers.get("content-type") || "",
       status: res.status,
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
-    });
+    };
+
+    try {
+      await req.respond(fake);
+    } catch (err) {
+      if (String(err) !== "Error: Browser already closed.")
+        throw err;
+    }
     //req.continue();
   });
 
