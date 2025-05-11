@@ -7,8 +7,10 @@ export default async function createKruEnv() {
   let browser: Browser | undefined = await puppeteer.launch({
     headless: headlessBrowser,
     devtools: !headlessBrowser,
+    browser: "firefox",
     // just made $100k off chromium command line switches 🤑
     args: [
+      "--no-sandbox",
       "--blink-settings=imagesEnabled=false",
       "--mute-audio",
       "--disable-gpu",
@@ -23,12 +25,12 @@ export default async function createKruEnv() {
   page.on("request", async (req) => {
     const url = new URL(req.url());
 
-    // console.log(url.href);
-
     if (
-      ["font", "image", "stylesheet"].includes(req.resourceType()) ||
-      url.hostname !== "krunker.io"
+      // ["font", "image", "stylesheet"].includes(req.resourceType()) ||
+      !["krunker.io", "matchmaker.krunker.io"].includes(url.hostname) &&
+      !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
+      console.log("Blocking", url.href);
       req.abort();
       return;
     }
