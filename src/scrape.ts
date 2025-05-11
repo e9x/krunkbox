@@ -17,6 +17,7 @@ export default async function createKruEnv() {
     // "--mute-audio",
     // "--disable-gpu",
     // ],
+    protocolTimeout: 10000e3,
   });
 
   // use new tab
