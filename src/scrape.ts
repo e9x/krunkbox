@@ -33,7 +33,7 @@ export default async function createKruEnv() {
       !["krunker.io", "matchmaker.krunker.io"].includes(url.hostname) &&
       !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
-      console.log("Blocking", url.href);
+      console.log("Blocking", url.href.slice(0,48));
       req.abort();
       return;
     }
