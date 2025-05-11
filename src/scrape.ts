@@ -9,7 +9,7 @@ export default async function createKruEnv() {
   let browser: Browser | undefined = await puppeteer.launch({
     headless: headlessBrowser,
     devtools: !headlessBrowser,
-    browser: "firefox",
+    // browser: "firefox",
     // just made $100k off chromium command line switches 🤑
     // args: [
     // "--no-sandbox",
