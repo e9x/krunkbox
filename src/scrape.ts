@@ -30,7 +30,7 @@ export default async function createKruEnv() {
 
     if (
       // ["font", "image", "stylesheet"].includes(req.resourceType()) ||
-      !["krunker.io", "matchmaker.krunker.io"].includes(url.hostname) &&
+      !(["krunker.io", "matchmaker.krunker.io"].includes(url.hostname)) &&
       !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
       console.log("Blocking", url.href.slice(0, 48));
