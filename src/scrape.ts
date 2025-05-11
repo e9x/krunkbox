@@ -2,7 +2,8 @@ import { headlessBrowser } from "./env";
 import { readFile } from "node:fs/promises";
 import puppeteer, { type Page, type Browser, HandleFor } from "puppeteer";
 import type { KruSource } from "~client/inject";
-import { proxy } from "./proxy";
+import { agent, proxy } from "./proxy";
+import fetch from "node-fetch";
 
 export default async function createKruEnv() {
 
@@ -11,13 +12,12 @@ export default async function createKruEnv() {
     devtools: !headlessBrowser,
     browser: "firefox",
     // just made $100k off chromium command line switches 🤑
-    args: [
-      "--no-sandbox",
-      "--blink-settings=imagesEnabled=false",
-      "--mute-audio",
-      "--disable-gpu",
-      `--proxy-server=${proxy}`
-    ],
+    // args: [
+      // "--no-sandbox",
+      // "--blink-settings=imagesEnabled=false",
+      // "--mute-audio",
+      // "--disable-gpu",
+    // ],
   });
 
   // use new tab
@@ -40,17 +40,17 @@ export default async function createKruEnv() {
 
     // 91.107.140.0
 
-    // const res = await fetch(url, { agent });
+    const res = await fetch(url, { agent: agent });
 
-    // req.respond({
-    //   body: Buffer.from(await res.arrayBuffer()),
-    //   contentType: res.headers.get("content-type") || "",
-    //   status: res.status,
-    //   headers: {
-    //     "Access-Control-Allow-Origin": "*",
-    //   },
-    // });
-    req.continue();
+    req.respond({
+      body: Buffer.from(await res.arrayBuffer()),
+      contentType: res.headers.get("content-type") || "",
+      status: res.status,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    //req.continue();
   });
 
   await page.goto("https://krunker.io/", {
