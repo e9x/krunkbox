@@ -1,22 +1,78 @@
 import { SocksProxyAgent } from "socks-proxy-agent";
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { wireguard } from "./mullvad";
+import fetch, { RequestInit, Response } from "node-fetch";
 
-async function pickProxy() {
-    // const PROXY = process.env["PROXY"]?.split(",");
-    // if (PROXY === undefined) {
-    //     console.error("pls set PROXY g")
-    //     process.exit(1)
-    // }
-    // return PROXY[~~(Math.random() * PROXY.length)]
+export const ua =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
 
-    let mullvadServers = await fetch("https://api.mullvad.net/www/relays/wireguard/").then(res => res.json()) as any[];
-    mullvadServers = mullvadServers.filter(s => s.active && s.country_code === "us")
-    const server = mullvadServers[~~(Math.random() * mullvadServers.length)];
-    return `socks5://${server.socks_name}:${server.socks_port}`
+export function getAgent(proxyServer: string) {
+    let agent;
+    const url = new URL(proxyServer);
+    switch (url.protocol) {
+        case "https:":
+        case "http:":
+            agent = new HttpsProxyAgent(proxyServer);
+            break
+        case "socks4:":
+        case "socks5:":
+            agent = new SocksProxyAgent(proxyServer);
+            break
+    }
+
+    return agent as undefined as any;
 }
 
-export const proxy = await pickProxy();
+// const PROXY = process.env["PROXY"]?.split(",");
+// if (PROXY === undefined) {
+//     console.error("pls set PROXY g")
+//     process.exit(1)
+// }
 
-console.log({ proxy });
+// let proxyServers = PROXY;
+let proxyServers = wireguard.filter(s => s.active).map(s => s.toString());
 
-export const agent = (proxy.startsWith("https:") ? new HttpsProxyAgent(proxy) : proxy.startsWith("socks5://") ? new SocksProxyAgent(proxy) : undefined) as any;
+console.log("Loaded", wireguard.length, "Mullvad servers")
+
+class Proxy {
+    server!: string;
+    agent!: any;
+    next() {
+        let proxyServer = proxyServers[~~(Math.random() * proxyServers.length)]
+        // let proxy = proxyServers[~~(Math.random() * PROXY.length)]
+        console.log(proxyServer)
+        this.server = proxyServer;
+        this.agent = getAgent(proxyServer);
+
+    }
+    constructor(){
+        this.fetch = this.fetch.bind(this);
+        this.next();
+    }
+    async fetch(url: string | URL, init: RequestInit = {}): Promise<Response>{
+        url = new URL(url);
+        while (true) {
+            const res = await fetch(url, {
+                ...init,
+                headers: {
+                    ...(init.headers || {}),
+                    "User-Agent": ua,
+                },
+                agent: this.agent,
+            });
+
+            if (res.status === 403 && /(?:\.|^)krunker.io$/.test(url.hostname) && res.headers.get("content-type") == "text/html; charset=UTF-8") {
+                console.log("Proxy is IP banned, finding new one", res.status, this.server);
+                this.next();
+                continue;
+            }
+            //console.log("yay proxy worked",url,init, res.status, this.server);
+
+            return res;
+        }
+    }
+}
+
+export async function pickProxy() {
+    return new Proxy();
+}    

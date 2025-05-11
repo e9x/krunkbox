@@ -1,9 +1,8 @@
 import { headlessBrowser } from "./env";
 import { readFile } from "node:fs/promises";
-import puppeteer, { type Page, type Browser, HandleFor } from "puppeteer";
+import puppeteer, { type Browser, HandleFor } from "puppeteer";
 import type { KruSource } from "~client/inject";
-import { agent, proxy } from "./proxy";
-import fetch from "node-fetch";
+import { pickProxy } from "./proxy";
 
 export default async function createKruEnv() {
 
@@ -25,6 +24,8 @@ export default async function createKruEnv() {
 
   page.setRequestInterception(true);
 
+  const { fetch } = await pickProxy();
+
   page.on("request", async (req) => {
     const url = new URL(req.url());
 
@@ -33,14 +34,13 @@ export default async function createKruEnv() {
       !(["krunker.io", "matchmaker.krunker.io"].includes(url.hostname)) &&
       !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
-      console.log("Blocking", url.href.slice(0, 48));
+      // console.log("Blocking", url.href.slice(0, 48));
       req.abort();
       return;
     }
 
     // 91.107.140.0
-
-    const res = await fetch(url, { agent: agent });
+    const res = await fetch(url);
     const fake = {
       body: Buffer.from(await res.arrayBuffer()),
       contentType: res.headers.get("content-type") || "",

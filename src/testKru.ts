@@ -1,16 +1,15 @@
 import type { KruEnv } from "./scrape";
 import { scripts } from "./sketchData";
-import fetch from "node-fetch";
-import { agent } from "./proxy";
+import { pickProxy } from "./proxy";
 
 export default async function testKru(kruEnv: KruEnv) {
   console.group("Test");
 
+  const { fetch } = await pickProxy();
+
   try {
     const token = await (
-      await fetch("https://matchmaker.krunker.io/generate-token", {
-        agent,
-      })
+      await fetch("https://matchmaker.krunker.io/generate-token")
     ).text();
 
     // const token = new TextDecoder().decode(
@@ -66,10 +65,7 @@ export default async function testKru(kruEnv: KruEnv) {
           "sec-fetch-dest": "empty",
           "sec-fetch-mode": "cors",
           "sec-fetch-site": "same-site",
-          "user-agent":
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
-        agent,
       }
     );
 
