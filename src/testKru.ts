@@ -1,6 +1,7 @@
-// import { dispatcher } from "./env";
 import type { KruEnv } from "./scrape";
 import { scripts } from "./sketchData";
+import fetch from "node-fetch";
+import { agent } from "./proxy";
 
 export default async function testKru(kruEnv: KruEnv) {
   console.group("Test");
@@ -8,7 +9,7 @@ export default async function testKru(kruEnv: KruEnv) {
   try {
     const token = await (
       await fetch("https://matchmaker.krunker.io/generate-token", {
-        // dispatcher,
+        agent,
       })
     ).text();
 
@@ -68,7 +69,7 @@ export default async function testKru(kruEnv: KruEnv) {
           "user-agent":
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
-        // dispatcher,
+        agent,
       }
     );
 

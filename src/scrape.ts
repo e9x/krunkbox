@@ -2,8 +2,10 @@ import { headlessBrowser } from "./env";
 import { readFile } from "node:fs/promises";
 import puppeteer, { type Page, type Browser, HandleFor } from "puppeteer";
 import type { KruSource } from "~client/inject";
+import { proxy } from "./proxy";
 
 export default async function createKruEnv() {
+
   let browser: Browser | undefined = await puppeteer.launch({
     headless: headlessBrowser,
     devtools: !headlessBrowser,
@@ -14,6 +16,7 @@ export default async function createKruEnv() {
       "--blink-settings=imagesEnabled=false",
       "--mute-audio",
       "--disable-gpu",
+      `--proxy-server=${proxy}`
     ],
   });
 
@@ -37,7 +40,7 @@ export default async function createKruEnv() {
 
     // 91.107.140.0
 
-    // const res = await fetch(url);
+    // const res = await fetch(url, { agent });
 
     // req.respond({
     //   body: Buffer.from(await res.arrayBuffer()),

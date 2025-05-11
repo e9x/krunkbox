@@ -1,6 +1,8 @@
 import type { PathLike } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { binDir, loaderIndex } from "./kruPaths";
+import fetch from "node-fetch";
+import { agent } from "./proxy";
 
 interface LoaderResource {
   alias: "index_html";
@@ -24,8 +26,9 @@ const ua =
 async function testLoaders(updated: Partial<Updated>) {
   await Promise.all(
     resources.map(async (resource) => {
+      console.log("FETCH",resource.url)
       const res = await fetch(resource.url, {
-        // dispatcher
+        agent,
         headers: {
           "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
           "User-Agent": ua,
