@@ -1,7 +1,7 @@
 import {
   compatibleChecksumsPath,
   gameSkinsPath,
-  gameSourcePath,
+  gameSourceDebugPath,
   sketchPath,
 } from "./sketchDataPaths";
 import { watch } from "chokidar";
@@ -105,7 +105,7 @@ export async function updateGameData() {
 
   let src: Buffer;
   try {
-    src = await readFile(gameSourcePath);
+    src = await readFile(gameSourceDebugPath);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     console.log(`game source doesn't exist`);
