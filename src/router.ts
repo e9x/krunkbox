@@ -123,7 +123,7 @@ async function routerTpLinkArcherAx3000(
   );
   res.setHeader("cache-control", "no-cache");
   res.setHeader("access-control-expose-headers", "etag, x-src");
-  // res.setHeader("access-control-max-age", "86400");
+  res.setHeader("access-control-max-age", "86400");
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
