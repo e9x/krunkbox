@@ -33,7 +33,6 @@ async function testLoaders(updated: Partial<Updated>) {
       if (!res.ok || !res.body)
         throw new Error(`Fatal error: Cannot fetch ${resource.url} ${res.status}`);
 
-      console.log("cucka fucka")
       try {
         const stats = await stat(resource.path);
         const header = res.headers.get("last-modified");

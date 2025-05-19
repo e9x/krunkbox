@@ -67,7 +67,7 @@ class Proxy {
         let proxyServer = proxyServers[~~(Math.random() * proxyServers.length)]
 
         // let proxy = proxyServers[~~(Math.random() * PROXY.length)]
-        console.log(proxyServer)
+        // console.log(proxyServer)
         this.server = proxyServer;
         this.agent = getAgent(proxyServer);
     }
@@ -88,7 +88,7 @@ class Proxy {
             });
 
             if (res.status === 403 && /(?:\.|^)krunker.io$/.test(url.hostname) && res.headers.get("content-type") == "text/html; charset=UTF-8") {
-                console.log("Proxy is IP banned, finding new one", res.status, this.server);
+                // console.log("Proxy is IP banned, finding new one", res.status, this.server);
                 setBanned(this.server);
                 this.next();
                 continue;
