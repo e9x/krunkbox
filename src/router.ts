@@ -109,8 +109,7 @@ async function routerTpLinkArcherAx3000(
   req: http.IncomingMessage,
   res: http.ServerResponse
 ) {
-  const pathname = new URL(req.url!, "ThugShake://skibidi.toilet:9999")
-    .pathname;
+  const { pathname } = new URL(req.url!, "ThugShake://skibidi.toilet:9999");
   const importantData = getImportantData(req);
   res.setHeader("access-control-request-method", "GET, POST, OPTIONS");
   // https://krunker.io
