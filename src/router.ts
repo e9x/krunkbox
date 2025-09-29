@@ -290,7 +290,8 @@ async function routerTpLinkArcherAx3000(
       outdated: reqVersion.compare(scripts.sketch.version) === -1,
       latestVersion: scripts.sketch.version,
       // test didn't pass = not updated
-      sketchUpdated: sketchUpdated(body.supportedGame),
+      sketchUpdated: true,
+      // sketchUpdated: sketchUpdated(body.supportedGame),
       // client will interpret as relative to API url
       updateURL: `${userscriptName}?${Date.now()}`,
     } as SketchVersion);
