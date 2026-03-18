@@ -1,5 +1,6 @@
 import {
   compatibleChecksumsPath,
+  gameManifest,
   gameSkinsPath,
   gameSourceDebugPath,
   sketchPath,
@@ -112,9 +113,9 @@ export async function updateGameData() {
     return;
   }
 
-  let skins: Buffer;
+  let manifest: {renamed: Record<string,string>};
   try {
-    skins = await readFile(gameSkinsPath);
+    manifest= JSON.parse(await readFile(gameManifest, "utf-8"));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.error(err);
@@ -124,7 +125,7 @@ export async function updateGameData() {
   }
 
   const checksum = createHash("sha512").update(src).digest("hex");
-  const merged = Buffer.concat([src, skins]);
+  const merged = Buffer.concat([src, Buffer.from(JSON.stringify(manifest.renamed))]);
   console.log("Game source:", checksum);
   const mergedChecksum = createHash("sha512").update(merged).digest("hex");
 
