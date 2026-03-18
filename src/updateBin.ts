@@ -32,7 +32,6 @@ async function testLoaders(updated: Partial<Updated>) {
 
       if (!res.ok || !res.body)
         throw new Error(`Fatal error: Cannot fetch ${resource.url} ${res.status}`);
-
       try {
         const stats = await stat(resource.path);
         const header = res.headers.get("last-modified");
@@ -43,6 +42,7 @@ async function testLoaders(updated: Partial<Updated>) {
         if (lastModified.getTime() <= stats.mtimeMs) return;
       } catch (err) {
         if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+      
       }
 
       updated[resource.alias] = true;

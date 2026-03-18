@@ -53,9 +53,9 @@ export default async function createKruEnv() {
       contentType: res.headers.get("content-type") || "",
       status: res.status,
       headers: {
-        // "Access-Control-Allow-Origin": "*",
-        // "Access-Control-Allow-Method": "*",
-        // "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Method": "*",
+        "Access-Control-Allow-Headers": "get",
         ...h,
       },
     };
