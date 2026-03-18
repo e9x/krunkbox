@@ -13,11 +13,11 @@ export default async function createKruEnv() {
     // browser: "firefox",
     // just made $100k off chromium command line switches 🤑
     args: [
-    // "--no-sandbox",
-    // "--blink-settings=imagesEnabled=false",
-    // "--mute-audio",
-    // "--disable-gpu",
-    "--proxy-server=socks5://" + wireguard[0].socks_name + ":" + wireguard[0].socks_port,
+      // "--no-sandbox",
+      // "--blink-settings=imagesEnabled=false",
+      // "--mute-audio",
+      // "--disable-gpu",
+      "--proxy-server=socks5://" + wireguard[0].socks_name + ":" + wireguard[0].socks_port,
     ],
     protocolTimeout: 10000e3,
   });
@@ -35,7 +35,7 @@ export default async function createKruEnv() {
     // console.log(url.hostname, url.href);
     if (
       // ["font", "image", "stylesheet"].includes(req.resourceType()) ||
-      !(["krunker.io", "matchmaker.krunker.io","gapi.svc.krunker.io"].includes(url.hostname)) &&
+      !(["krunker.io", "matchmaker.krunker.io", "gapi.svc.krunker.io"].includes(url.hostname)) &&
       !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|skins|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
       // console.log("Blocking", url.href.slice(0, 48));
@@ -45,15 +45,18 @@ export default async function createKruEnv() {
 
     // 91.107.140.0
     // if(url.hostname.includes("gapi.svc"))console.log({...req.headers()});
-    const res = await fetch(url, {headers: req.headers()});
+    const res = await fetch(url, { headers: req.headers() });
+    const h = Object.fromEntries(res.headers);
+    // console.log("got res", url, h);
     const fake = {
       body: Buffer.from(await res.arrayBuffer()),
       contentType: res.headers.get("content-type") || "",
       status: res.status,
       headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Method": "*",
-        "Access-Control-Allow-Headers": "*",
+        // "Access-Control-Allow-Origin": "*",
+        // "Access-Control-Allow-Method": "*",
+        // "Access-Control-Allow-Headers": "*",
+        ...h,
       },
     };
 
