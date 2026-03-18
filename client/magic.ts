@@ -56,7 +56,7 @@ export function magic(createOptions: CreateOptions) {
 
   const { open } = XMLHttpRequest.prototype;
   // @ts-ignore
-  XMLHttpRequest.prototype.open = function (method, url, ...args) {
+  XMLHttpRequest.prototype.open = mirrorAttributes(function (this: XMLHttpRequest, method, url, ...args) {
     // console.trace(method, url);
     url = new URL(url, location.href).href;
     if (url.includes("generate-token")) {
@@ -80,7 +80,7 @@ export function magic(createOptions: CreateOptions) {
           });
         })();
     } else return Reflect.apply(open, this, [method, url, ...args]);
-  };
+  }, open);
 
   hookContext(window, (context) => {
     const { newFunction } = options;

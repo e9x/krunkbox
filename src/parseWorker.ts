@@ -19,7 +19,7 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
     await writeFile(gameManifest, JSON.stringify(exp));
   }
 
-  // add helpers so the debug file can execute
+  // add helpers so wthe debug file can execute
   await writeFile(
     gameSourceDebugPath,
     `${Object.entries(exp.renamed)

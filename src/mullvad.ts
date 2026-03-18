@@ -22,4 +22,13 @@ class MullvadServer {
     }
 }
 
-export const wireguard: MullvadServer[] = await fetch("https://api.mullvad.net/www/relays/wireguard/").then(res => res.json()).then(m => (m as any[]).map(s => Object.setPrototypeOf(s, MullvadServer.prototype))) as any;
+function parseSocks(proxy: string): MullvadServer {
+    const [host, port] = proxy.split(":");
+    return Object.setPrototypeOf({
+        socks_name: host,
+        socks_port: parseInt(port),
+        active: true,
+    }, MullvadServer.prototype);
+}
+
+export const wireguard: MullvadServer[] = process.env.PROXY ? [parseSocks(process.env.PROXY)] : await fetch("https://api.mullvad.net/www/relays/wireguard/").then(res => res.json()).then(m => (m as any[]).map(s => Object.setPrototypeOf(s, MullvadServer.prototype))) as any;

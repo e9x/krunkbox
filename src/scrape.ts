@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import puppeteer, { type Browser, HandleFor } from "puppeteer";
 import type { KruSource } from "~client/inject";
 import { pickProxy } from "./proxy";
+import { wireguard } from "./mullvad";
 
 export default async function createKruEnv() {
 
@@ -11,12 +12,13 @@ export default async function createKruEnv() {
     devtools: !headlessBrowser,
     // browser: "firefox",
     // just made $100k off chromium command line switches 🤑
-    // args: [
+    args: [
     // "--no-sandbox",
     // "--blink-settings=imagesEnabled=false",
     // "--mute-audio",
     // "--disable-gpu",
-    // ],
+    "--proxy-server=socks5://" + wireguard[0].socks_name + ":" + wireguard[0].socks_port,
+    ],
     protocolTimeout: 10000e3,
   });
 
@@ -30,24 +32,28 @@ export default async function createKruEnv() {
   page.on("request", async (req) => {
     const url = new URL(req.url());
 
+    // console.log(url.hostname, url.href);
     if (
       // ["font", "image", "stylesheet"].includes(req.resourceType()) ||
-      !(["krunker.io", "matchmaker.krunker.io"].includes(url.hostname)) &&
-      !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|core.dat.*?)(?:\?.*?)?$/.test(url.href)
+      !(["krunker.io", "matchmaker.krunker.io","gapi.svc.krunker.io"].includes(url.hostname)) &&
+      !/^.*?(?:\/|\.m?js|\.wasm|\.jspck|skins|core.dat.*?)(?:\?.*?)?$/.test(url.href)
     ) {
       // console.log("Blocking", url.href.slice(0, 48));
       req.abort();
       return;
-    }
+    }//gapi.svc.krunker.io
 
     // 91.107.140.0
-    const res = await fetch(url);
+    // if(url.hostname.includes("gapi.svc"))console.log({...req.headers()});
+    const res = await fetch(url, {headers: req.headers()});
     const fake = {
       body: Buffer.from(await res.arrayBuffer()),
       contentType: res.headers.get("content-type") || "",
       status: res.status,
       headers: {
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Method": "*",
+        "Access-Control-Allow-Headers": "*",
       },
     };
 

@@ -542,7 +542,7 @@ export interface ParseWorker extends Piscina {
 }
 
 const parse: ParseWorker = new Piscina({
-  maxThreads: 1,
+  maxThreads: 2,
   resourceLimits: { maxOldGenerationSizeMb: 2000 },
   filename: new URL("./parseWorker.js", import.meta.url).toString(),
 });
