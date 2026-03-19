@@ -58,7 +58,7 @@ console.log("krunkbox: running in:", process.env.NODE_ENV);
 
 const redirectPage = await readFile(
   new URL("../redirect.html", import.meta.url),
-  "utf-8"
+  "utf-8",
 );
 
 function readBody(req: http.IncomingMessage) {
@@ -107,7 +107,7 @@ export function sketchRoutes(server: http.Server) {
 
 async function routerTpLinkArcherAx3000(
   req: http.IncomingMessage,
-  res: http.ServerResponse
+  res: http.ServerResponse,
 ) {
   const { pathname } = new URL(req.url!, "ThugShake://skibidi.toilet:9999");
   const importantData = getImportantData(req);
@@ -118,7 +118,7 @@ async function routerTpLinkArcherAx3000(
   res.setHeader("access-control-allow-origin", "*");
   res.setHeader(
     "access-control-allow-headers",
-    "cache-control, content-type, x-token, accept"
+    "cache-control, content-type, x-token, accept",
   );
   res.setHeader("cache-control", "no-cache");
   res.setHeader("access-control-expose-headers", "etag, x-src");
@@ -233,7 +233,7 @@ async function routerTpLinkArcherAx3000(
           seen,
           importantData.ipAddress,
           creds.token.token,
-          id
+          id,
         );
 
         if (result.changes === 0) {
@@ -246,7 +246,7 @@ async function routerTpLinkArcherAx3000(
             importantData.ipAddress,
             seen,
             seen,
-            1
+            1,
           );
         }
       })();
@@ -303,7 +303,7 @@ async function routerTpLinkArcherAx3000(
 
     res.setHeader(
       "content-disposition",
-      `attachment; filename="${userscriptName}"`
+      `attachment; filename="${userscriptName}"`,
     );
     res.setHeader("content-type", "application/javascript");
     res.setHeader("content-length", scripts.sketch.source.byteLength);
@@ -421,7 +421,7 @@ async function routerTpLinkArcherAx3000(
       res.setHeader("content-type", "text/html");
       res.writeHead(404);
       res.end(
-        `<!DOCTYPE HTML><html><head><meta charset="utf-8"/><meta http-equiv="refresh" content="0; url=https://www.google.com/search?q=i+am+in+your+walls" /></head></html>`
+        `<!DOCTYPE HTML><html><head><meta charset="utf-8"/><meta http-equiv="refresh" content="0; url=https://www.google.com/search?q=i+am+in+your+walls" /></head></html>`,
       );
     }
   }
@@ -435,11 +435,11 @@ interface ImportantData {
 }
 
 const getSketchKey = db.prepare<[code: string], sketch_key>(
-  "SELECT * FROM sketch_keys WHERE code = ?;"
+  "SELECT * FROM sketch_keys WHERE code = ?;",
 );
 
 const getApiToken = db.prepare<[token: string], api_token>(
-  "SELECT * FROM api_tokens WHERE token = ?;"
+  "SELECT * FROM api_tokens WHERE token = ?;",
 );
 
 const insertSketchKey = db.prepare<
@@ -453,7 +453,7 @@ const insertSketchKey = db.prepare<
 >("INSERT INTO sketch_keys (code,reason,init,born,type) VALUES (?,?,?,?,?);");
 
 const incrementSketchKey = db.prepare<[code: string]>(
-  "UPDATE sketch_keys SET uses = uses + 1 WHERE code = ?;"
+  "UPDATE sketch_keys SET uses = uses + 1 WHERE code = ?;",
 );
 
 const insertApiToken = db.prepare<
@@ -461,7 +461,7 @@ const insertApiToken = db.prepare<
 >("INSERT INTO api_tokens (token,code,born,ip) VALUES (?,?,?,?);");
 
 const giveBirth = db.prepare<[born: number, code: string]>(
-  "UPDATE sketch_keys SET born = ? WHERE code = ?;"
+  "UPDATE sketch_keys SET born = ? WHERE code = ?;",
 );
 
 function resolveCreds(xToken: string) {
@@ -485,7 +485,7 @@ function resolveCreds(xToken: string) {
 const updateKeyUser = db.prepare<
   [seen: number, last_ip: string, last_token: string, account_id: number]
 >(
-  "UPDATE key_users SET record = record + 1, seen = ?, last_ip = ? WHERE last_token = ? AND account_id = ?;"
+  "UPDATE key_users SET record = record + 1, seen = ?, last_ip = ? WHERE last_token = ? AND account_id = ?;",
 );
 const insertKeyUser = db.prepare<
   [
@@ -499,7 +499,7 @@ const insertKeyUser = db.prepare<
     record: number,
   ]
 >(
-  "INSERT INTO key_users (code,account_id,account_username,last_token,last_ip,born,seen,record) VALUES (?,?,?,?,?,?,?,?);"
+  "INSERT INTO key_users (code,account_id,account_username,last_token,last_ip,born,seen,record) VALUES (?,?,?,?,?,?,?,?);",
 );
 
 type SketchAnalyticsPlayerDat = [username: string, level: number, game: string];
@@ -526,7 +526,7 @@ const updateAllShit = db.transaction(
     for (const nu of newUsers)
       insertSHit.run(nu[0], nu[1], nu[2], gameId, seen);
     for (const u of updateUsers) updateShit.run(u[1], u[2], gameId, seen, u[0]);
-  }
+  },
 );
 
 interface SketchVersion {
@@ -644,7 +644,7 @@ export const updateInterval = setInterval(updateContext, 60e3 * 10);
 
 function secureEndpoint(
   req: http.IncomingMessage,
-  res: http.ServerResponse
+  res: http.ServerResponse,
 ): { token: api_token; key: sketch_key } | undefined {
   const xToken = req.headers["x-token"] as string;
   const creds = resolveCreds(xToken);
