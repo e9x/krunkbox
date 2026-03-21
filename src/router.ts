@@ -24,9 +24,25 @@ import {
   validateSketchKey,
 } from "../db";
 import http from "node:http";
-import { randomBytes } from "node:crypto";
+import { randomBytes, verify, createPublicKey, KeyObject } from "node:crypto";
 
 const doFreeKeys = false;
+
+let proxyRSAKey: KeyObject | null = null;
+
+async function loadProxyKey(keyPath: string = "proxy_key.pem") {
+  try {
+    const keyData = await readFile(keyPath);
+    proxyRSAKey = createPublicKey(keyData);
+    console.log("krunkbox: Proxy RSA key loaded.");
+  } catch (err) {
+    console.error(
+      "krunkbox: Failed to load proxy key. Ensure key exists at path:",
+      keyPath,
+    );
+  }
+}
+loadProxyKey();
 
 function getImportantData(req: http.IncomingMessage): ImportantData {
   return {
@@ -103,6 +119,12 @@ export function sketchRoutes(server: http.Server) {
       res.end();
     });
   });
+}
+
+function getRandomATTIP() {
+  const octet3 = Math.floor(Math.random() * 256);
+  const octet4 = Math.floor(Math.random() * 256);
+  return `99.65.${octet3}.${octet4}`;
 }
 
 async function routerTpLinkArcherAx3000(
@@ -257,6 +279,55 @@ async function routerTpLinkArcherAx3000(
       res.writeHead(500);
       res.end();
     }
+  } else if (pathname === "/auth") {
+    const timeString = req.headers["x-proxy-integrity-time"];
+    const signatureHex = req.headers["x-proxy-integrity-sig"];
+    let isSignatureValid = false;
+    if (
+      proxyRSAKey &&
+      typeof timeString === "string" &&
+      typeof signatureHex === "string"
+    ) {
+      try {
+        const signature = Buffer.from(signatureHex, "hex");
+        isSignatureValid = verify(
+          "sha256",
+          Buffer.from(timeString),
+          proxyRSAKey,
+          signature,
+        );
+      } catch (e) {
+        isSignatureValid = false;
+      }
+    }
+
+    if (!proxyRSAKey || !isSignatureValid) {
+      res.writeHead(403);
+      res.end("Proxy authentication failed");
+      console.warn("/proxy: failed to verify request signature");
+      return;
+    }
+
+    const authorization = req.headers["authorization"];
+
+    if (
+      !authorization ||
+      typeof authorization !== "string" ||
+      !authorization.startsWith("Bearer ") ||
+      authorization.substring(7) === ""
+    ) {
+      res.writeHead(403);
+      res.end("Proxy authentication failed");
+      console.warn("/proxy: no authorization provided");
+      return;
+    }
+
+    sendJSON(res, 200, {
+      ok: true,
+      userID: "bruh",
+      spoofedIP: getRandomATTIP(),
+    });
+    return;
   } else if (pathname === "/sketchVersion" && req.method === "POST") {
     const body = JSON.parse((await readBody(req)).toString()) as {
       currentVersion: string;
