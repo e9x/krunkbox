@@ -113,9 +113,9 @@ export async function updateGameData() {
     return;
   }
 
-  let manifest: {renamed: Record<string,string>};
+  let manifest: { renamed: Record<string, string> };
   try {
-    manifest= JSON.parse(await readFile(gameManifest, "utf-8"));
+    manifest = JSON.parse(await readFile(gameManifest, "utf-8"));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.error(err);
@@ -125,7 +125,10 @@ export async function updateGameData() {
   }
 
   const checksum = createHash("sha512").update(src).digest("hex");
-  const merged = Buffer.concat([src, Buffer.from(JSON.stringify(manifest.renamed))]);
+  const merged = Buffer.concat([
+    src,
+    Buffer.from(JSON.stringify(manifest.renamed)),
+  ]);
   console.log("Game source:", checksum);
   const mergedChecksum = createHash("sha512").update(merged).digest("hex");
 
@@ -153,7 +156,7 @@ async function updateCompatibleChecksums() {
     } else if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.error(err);
       console.log(
-        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`
+        `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`,
       );
       return;
     } else throw err;
@@ -171,7 +174,7 @@ updateSketchData();
 updateGameData();
 
 export const compatibleChecksumsWatcher = watch(
-  fileURLToPath(compatibleChecksumsPath)
+  fileURLToPath(compatibleChecksumsPath),
 );
 compatibleChecksumsWatcher.on("change", updateCompatibleChecksums);
 updateCompatibleChecksums();

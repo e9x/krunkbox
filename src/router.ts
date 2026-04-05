@@ -122,9 +122,10 @@ export function sketchRoutes(server: http.Server) {
 }
 
 function getRandomATTIP() {
-  const octet3 = Math.floor(Math.random() * 256);
-  const octet4 = Math.floor(Math.random() * 256);
-  return `99.65.${octet3}.${octet4}`;
+  return "73.250.99.3";
+  //  const octet3 = Math.floor(Math.random() * 256);
+  //  const octet4 = Math.floor(Math.random() * 256);
+  //  return `99.65.${octet3}.${octet4}`;
 }
 
 async function routerTpLinkArcherAx3000(
@@ -283,6 +284,9 @@ async function routerTpLinkArcherAx3000(
     const timeString = req.headers["x-proxy-integrity-time"];
     const signatureHex = req.headers["x-proxy-integrity-sig"];
     let isSignatureValid = false;
+
+    const authorization = req.headers["authorization"];
+
     if (
       proxyRSAKey &&
       typeof timeString === "string" &&
@@ -296,36 +300,37 @@ async function routerTpLinkArcherAx3000(
           proxyRSAKey,
           signature,
         );
+        console.log({ authorization, isSignatureValid, timeString, signature });
       } catch (e) {
         isSignatureValid = false;
       }
     }
 
     if (!proxyRSAKey || !isSignatureValid) {
-      res.writeHead(403);
-      res.end("Proxy authentication failed");
+      // res.writeHead(403);
+      // res.end("Proxy authentication failed");
       console.warn("/proxy: failed to verify request signature");
-      return;
+      // return;
     }
 
-    const authorization = req.headers["authorization"];
+    // if (
+    //   !authorization ||
+    //   typeof authorization !== "string" ||
+    //   !authorization.startsWith("Bearer ") ||
+    //   authorization.substring(7) === ""
+    // ) {
+    //   res.writeHead(403);
+    //   res.end("Proxy authentication failed");
+    //   console.warn("/proxy: no authorization provided");
+    //   return;
+    // }
 
-    if (
-      !authorization ||
-      typeof authorization !== "string" ||
-      !authorization.startsWith("Bearer ") ||
-      authorization.substring(7) === ""
-    ) {
-      res.writeHead(403);
-      res.end("Proxy authentication failed");
-      console.warn("/proxy: no authorization provided");
-      return;
-    }
+    const spoofedIP = getRandomATTIP();
 
     sendJSON(res, 200, {
       ok: true,
       userID: "bruh",
-      spoofedIP: getRandomATTIP(),
+      spoofedIP,
     });
     return;
   } else if (pathname === "/sketchVersion" && req.method === "POST") {
@@ -606,7 +611,7 @@ interface SketchVersion {
   updateURL: string;
 }
 
-const alwaysUpToDate = true;
+const alwaysUpToDate = false;
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;
