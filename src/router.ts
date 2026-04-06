@@ -654,7 +654,13 @@ async function routerTpLinkArcherAx3000(
         );
       }
 
-      notifyDiscordCC(checksum, rawCode, deobfuscated, comparison);
+      if (!comparison || comparison.similarity < 0.99) {
+        notifyDiscordCC(checksum, rawCode, deobfuscated, comparison);
+      } else {
+        console.log(
+          `krunkbox: CC similarity ${(comparison.similarity * 100).toFixed(1)}% >= 99%, skipping webhook.`,
+        );
+      }
 
       // Atomic append is much safer and faster than a full JSON rewrite
       appendFile(ccChecksumsPath, checksum + "\n", "utf-8").catch((err: any) =>
