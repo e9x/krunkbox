@@ -164,13 +164,13 @@ function compareProfiles(a: ASTProfile, b: ASTProfile): Omit<CCComparisonResult,
 
   // Weighted overall similarity
   const similarity =
-    nodeTypeDist * 0.25 +
-    stringSim * 0.20 +
-    identSim * 0.15 +
-    structSim * 0.15 +
+    nodeTypeDist * 0.30 +
+    structSim * 0.25 +
+    funcDelta * 0.15 +
+    nodeDelta * 0.10 +
     numericSim * 0.10 +
-    funcDelta * 0.10 +
-    nodeDelta * 0.05;
+    stringSim * 0.05 +
+    identSim * 0.05;
 
   return {
     similarity,
