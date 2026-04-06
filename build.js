@@ -23,6 +23,10 @@ await build({
       in: "src/ccDeobWorker.ts",
       out: "ccDeobWorker",
     },
+    {
+      in: "src/testCcDeob.ts",
+      out: "testCcDeob",
+    },
   ],
   outdir: "dist/",
   format: "esm",

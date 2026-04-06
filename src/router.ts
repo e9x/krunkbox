@@ -492,7 +492,6 @@ async function routerTpLinkArcherAx3000(
       return;
     }
     const reqVersion = new SemVer(body.currentVersion);
-    console.trace("lol", body);
     sendJSON(res, 200, {
       outdated: reqVersion.compare(scripts.sketch.version) === -1,
       latestVersion: scripts.sketch.version,
