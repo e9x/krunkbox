@@ -28,7 +28,7 @@
     "semver": "^7.5.4",
     "socks-proxy-agent": "^8.0.5",
     "source-map-support": "^0.5.21",
-    "webcrack": "^2.15.1"
+    "webcrack": "^2.16.0-beta.1"
   },
   "devDependencies": {
     "@types/async-exit-hook": "^2.0.2",
