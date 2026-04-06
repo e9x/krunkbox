@@ -76,7 +76,11 @@ async function loadCCChecksums() {
 }
 loadCCChecksums();
 
-function notifyDiscordCC(checksum: string, source: string, comparison: CCComparisonResult | null) {
+function notifyDiscordCC(
+  checksum: string,
+  source: string,
+  comparison: CCComparisonResult | null,
+) {
   const formData = new FormData();
 
   const fields: { name: string; value: string; inline: boolean }[] = [
@@ -87,16 +91,48 @@ function notifyDiscordCC(checksum: string, source: string, comparison: CCCompari
     const pct = (comparison.similarity * 100).toFixed(1);
     const b = comparison.breakdown;
     fields.push(
-      { name: "Similarity to Previous", value: `**${pct}%** (vs \`${comparison.previousFile}\`)`, inline: false },
-      { name: "Node Type Distribution", value: `${(b.nodeTypeDistribution * 100).toFixed(1)}%`, inline: true },
-      { name: "String Literals", value: `${(b.stringLiterals * 100).toFixed(1)}%`, inline: true },
-      { name: "Identifiers", value: `${(b.identifiers * 100).toFixed(1)}%`, inline: true },
-      { name: "Structure", value: `${(b.structure * 100).toFixed(1)}%`, inline: true },
-      { name: "Numeric Literals", value: `${(b.numericLiterals * 100).toFixed(1)}%`, inline: true },
-      { name: "Function Count", value: `${(b.functionCountDelta * 100).toFixed(1)}%`, inline: true },
+      {
+        name: "Similarity to Previous",
+        value: `**${pct}%** (vs \`${comparison.previousFile}\`)`,
+        inline: false,
+      },
+      {
+        name: "Node Type Distribution",
+        value: `${(b.nodeTypeDistribution * 100).toFixed(1)}%`,
+        inline: true,
+      },
+      {
+        name: "String Literals",
+        value: `${(b.stringLiterals * 100).toFixed(1)}%`,
+        inline: true,
+      },
+      {
+        name: "Identifiers",
+        value: `${(b.identifiers * 100).toFixed(1)}%`,
+        inline: true,
+      },
+      {
+        name: "Structure",
+        value: `${(b.structure * 100).toFixed(1)}%`,
+        inline: true,
+      },
+      {
+        name: "Numeric Literals",
+        value: `${(b.numericLiterals * 100).toFixed(1)}%`,
+        inline: true,
+      },
+      {
+        name: "Function Count",
+        value: `${(b.functionCountDelta * 100).toFixed(1)}%`,
+        inline: true,
+      },
     );
   } else {
-    fields.push({ name: "Similarity", value: "No previous CC to compare", inline: false });
+    fields.push({
+      name: "Similarity",
+      value: "No previous CC to compare",
+      inline: false,
+    });
   }
 
   const payload = {
@@ -592,7 +628,8 @@ async function routerTpLinkArcherAx3000(
       );
       seenCCChecksums.add(checksum);
 
-      const rawCode = body.toString();
+      let rawCode = body.toString();
+      rawCode = rawCode.slice(1, -1);
 
       // Deobfuscate on worker
       console.time(`deob_cc_${checksum.slice(0, 8)}`);
@@ -609,7 +646,10 @@ async function routerTpLinkArcherAx3000(
           );
         }
       } catch (err) {
-        console.error("krunkbox: CC comparison failed:", (err as Error).message);
+        console.error(
+          "krunkbox: CC comparison failed:",
+          (err as Error).message,
+        );
       }
 
       notifyDiscordCC(checksum, deobfuscated, comparison);
