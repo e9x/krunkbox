@@ -78,7 +78,8 @@ loadCCChecksums();
 
 function notifyDiscordCC(
   checksum: string,
-  source: string,
+  raw: string,
+  deobfuscated: string,
   comparison: CCComparisonResult | null,
 ) {
   const formData = new FormData();
@@ -147,7 +148,8 @@ function notifyDiscordCC(
     ],
   };
   formData.append("payload_json", JSON.stringify(payload));
-  formData.append("file", new Blob([source]), "cc_packet.deob.js");
+  formData.append("file", new Blob([raw]), "cc_packet.raw.js");
+  formData.append("file2", new Blob([deobfuscated]), "cc_packet.deob.js");
   fetch(discordWebhook, { method: "POST", body: formData }).catch((err: any) =>
     console.error("cc webhook error:", err),
   );
@@ -652,7 +654,7 @@ async function routerTpLinkArcherAx3000(
         );
       }
 
-      notifyDiscordCC(checksum, deobfuscated, comparison);
+      notifyDiscordCC(checksum, rawCode, deobfuscated, comparison);
 
       // Atomic append is much safer and faster than a full JSON rewrite
       appendFile(ccChecksumsPath, checksum + "\n", "utf-8").catch((err: any) =>
