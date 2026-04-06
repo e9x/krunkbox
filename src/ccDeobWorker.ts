@@ -1,13 +1,27 @@
 import { webcrack } from "webcrack";
+import { transform } from "esbuild";
 
 export default async function deobfuscateCC(source: string) {
-  const result = await webcrack(source, {
-    deobfuscate: true,
-    mangle: () => true,
-    unminify: true,
-    unpack: true,
-    jsx: false,
+  let code = source;
+
+  try {
+    const result = await webcrack(source, {
+      deobfuscate: true,
+      mangle: () => true,
+      unminify: true,
+      unpack: true,
+      jsx: false,
+    });
+    code = result.code;
+  } catch (err) {
+    console.error("webcrack failed, falling back to raw source:", (err as Error).message);
+  }
+
+  const transformed = await transform(code, {
+    minify: false,
+    format: "esm",
+    legalComments: "none",
   });
 
-  return result.code;
+  return transformed.code;
 }

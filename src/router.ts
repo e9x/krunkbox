@@ -13,6 +13,7 @@ import {
 import testKru from "./testKru";
 import type { Updated } from "./updateBin";
 import updateBin from "./updateBin";
+import { compareWithLastCC, type CCComparisonResult } from "./ccCompare";
 import {
   access,
   readFile,
@@ -75,15 +76,36 @@ async function loadCCChecksums() {
 }
 loadCCChecksums();
 
-function notifyDiscordCC(checksum: string, source: string) {
+function notifyDiscordCC(checksum: string, source: string, comparison: CCComparisonResult | null) {
   const formData = new FormData();
+
+  const fields: { name: string; value: string; inline: boolean }[] = [
+    { name: "Checksum", value: `\`${checksum}\``, inline: false },
+  ];
+
+  if (comparison) {
+    const pct = (comparison.similarity * 100).toFixed(1);
+    const b = comparison.breakdown;
+    fields.push(
+      { name: "Similarity to Previous", value: `**${pct}%** (vs \`${comparison.previousFile}\`)`, inline: false },
+      { name: "Node Type Distribution", value: `${(b.nodeTypeDistribution * 100).toFixed(1)}%`, inline: true },
+      { name: "String Literals", value: `${(b.stringLiterals * 100).toFixed(1)}%`, inline: true },
+      { name: "Identifiers", value: `${(b.identifiers * 100).toFixed(1)}%`, inline: true },
+      { name: "Structure", value: `${(b.structure * 100).toFixed(1)}%`, inline: true },
+      { name: "Numeric Literals", value: `${(b.numericLiterals * 100).toFixed(1)}%`, inline: true },
+      { name: "Function Count", value: `${(b.functionCountDelta * 100).toFixed(1)}%`, inline: true },
+    );
+  } else {
+    fields.push({ name: "Similarity", value: "No previous CC to compare", inline: false });
+  }
+
   const payload = {
     username: "cc-watcher",
     embeds: [
       {
         title: "\uD83D\uDCE6 New Unique CC Packet Received",
         color: 0xff005c,
-        fields: [{ name: "Checksum", value: `\`${checksum}\``, inline: false }],
+        fields,
         timestamp: new Date().toISOString(),
       },
     ],
@@ -577,7 +599,20 @@ async function routerTpLinkArcherAx3000(
       const deobfuscated = await ccDeob.run(rawCode);
       console.timeEnd(`deob_cc_${checksum.slice(0, 8)}`);
 
-      notifyDiscordCC(checksum, deobfuscated);
+      // Compare with previous CC script before saving the new one
+      let comparison: CCComparisonResult | null = null;
+      try {
+        comparison = await compareWithLastCC(deobfuscated);
+        if (comparison) {
+          console.log(
+            `krunkbox: CC similarity to ${comparison.previousFile}: ${(comparison.similarity * 100).toFixed(1)}%`,
+          );
+        }
+      } catch (err) {
+        console.error("krunkbox: CC comparison failed:", (err as Error).message);
+      }
+
+      notifyDiscordCC(checksum, deobfuscated, comparison);
 
       // Atomic append is much safer and faster than a full JSON rewrite
       appendFile(ccChecksumsPath, checksum + "\n", "utf-8").catch((err: any) =>
