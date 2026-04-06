@@ -93,6 +93,14 @@ function sendJSON(res: http.ServerResponse, status: number, body: any) {
 }
 
 function sketchUpdated(supportedGame?: string) {
+  //   console.log({
+  //     skipUpdates,
+  //     didTest,
+  //     testPassed,
+  //     supportedGame,
+  //     gameSourceChecksum: scripts?.game?.checksum,
+  //   });
+
   if (!supportedGame) return;
 
   if (!skipUpdates && didTest && !testPassed) return false;
@@ -100,14 +108,12 @@ function sketchUpdated(supportedGame?: string) {
   if (alwaysUpToDate) return true;
 
   if (!scripts.game || !scripts.compat) return false;
-  const gameSourceChecksum = scripts.game.checksum;
 
-  if (
-    (gameSourceChecksum !== supportedGame &&
-      !(supportedGame in scripts.compat)) ||
-    !scripts.compat[supportedGame]?.includes(gameSourceChecksum)
-  )
-    return false;
+  if (scripts.game.checksum === supportedGame) return true;
+
+  const xn = scripts.compat[supportedGame];
+
+  if (!xn || !xn.includes(scripts.game.checksum)) return false;
 
   return true;
 }
@@ -361,7 +367,7 @@ async function routerTpLinkArcherAx3000(
       return;
     }
     const reqVersion = new SemVer(body.currentVersion);
-
+    console.trace("Nigga", body);
     sendJSON(res, 200, {
       outdated: reqVersion.compare(scripts.sketch.version) === -1,
       latestVersion: scripts.sketch.version,
