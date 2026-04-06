@@ -546,6 +546,9 @@ async function routerTpLinkArcherAx3000(
     res.writeHead(204);
     res.end();
   } else if (pathname === "/cc" && req.method === "POST") {
+    const creds = secureEndpoint(req, res);
+    if (!creds) return;
+
     const body = await readBody(req);
     const checksum = createHash("sha512").update(body).digest("hex");
     const filename = `cc_${Date.now()}.js`;
