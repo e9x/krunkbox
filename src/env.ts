@@ -27,7 +27,9 @@ if (!workinkAPI) throw new TypeError("Invalid WORKINK_API");
 
 export const discordWebhook = process.env.DISCORD_WEBHOOK || "";
 if (!discordWebhook)
-  console.warn("DISCORD_WEBHOOK not set — update canary won't be running");
+  throw new TypeError("DISCORD_WEBHOOK is required");
+
+export const silenceGameWebhooks = process.env.SILENCE_GAME_WEBHOOKS === "1";
 
 export const proxy = process.env.PROXY || "";
 

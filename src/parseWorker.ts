@@ -10,10 +10,10 @@ import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
 import type { KruSource } from "~client/inject";
-import { discordWebhook } from "./env";
+import { discordWebhook, silenceGameWebhooks } from "./env";
 
 function notifyDeobfuscationComplete(deobfuscated: string, sourceChecksum: string) {
-  if (!discordWebhook) return;
+  if (silenceGameWebhooks) return;
 
   const formData = new FormData();
 

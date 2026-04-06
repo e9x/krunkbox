@@ -10,10 +10,10 @@ import { createHash } from "node:crypto";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-import { discordWebhook } from "./env";
+import { discordWebhook, silenceGameWebhooks } from "./env";
 
 function notifyGameUpdate(checksum: string, previousChecksum: string, source: Buffer) {
-  if (!discordWebhook) return;
+  if (silenceGameWebhooks) return;
 
   const formData = new FormData();
 
