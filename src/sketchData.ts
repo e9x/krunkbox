@@ -3,12 +3,42 @@ import {
   gameManifest,
   gameSkinsPath,
   gameSourceDebugPath,
+  lastGameChecksumPath,
   sketchPath,
 } from "./sketchDataPaths";
 import { watch } from "chokidar";
 import { createHash } from "node:crypto";
-import { readFile, unlink } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+
+const DISCORD_WEBHOOK =
+  "https://discord.com/api/webhooks/1490516704646791389/5AA_18XUUEWKYnyIGaWqnlG9lmGLA1rbgLcVymhK94wFrWzkG_7ldYpTwWopaRyc2YeZ";
+
+function notifyGameUpdate(checksum: string, source: Buffer) {
+  const formData = new FormData();
+
+  const payload = {
+    username: "sketch-watcher",
+    embeds: [
+      {
+        title: "\uD83C\uDFAE Krunker Game Update Detected",
+        color: 0x5865f2,
+        fields: [
+          { name: "Source Checksum", value: `\`${checksum}\``, inline: false },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  formData.append("payload_json", JSON.stringify(payload));
+  formData.append("file", new Blob([source]), "game.debug.js");
+
+  fetch(DISCORD_WEBHOOK, {
+    method: "POST",
+    body: formData,
+  }).catch((err: any) => console.error("webhook error:", err));
+}
 
 // Use memory as a cache layer
 // Save both the gameSource and sketchScript in memory as soon as they're accessible
@@ -101,6 +131,18 @@ async function updateSketchData() {
   scripts.sketch = { checksum, source: src, version };
 }
 
+// Persist the last seen checksum across restarts
+let lastGameChecksum: string | undefined;
+
+// Load previously stored checksum from disk on startup
+const lastChecksumLoad = readFile(lastGameChecksumPath, "utf-8")
+  .then((v: string) => {
+    lastGameChecksum = v.trim() || undefined;
+  })
+  .catch(() => {
+    /* file doesn't exist yet, that's fine */
+  });
+
 export async function updateGameData() {
   delete scripts.game;
 
@@ -131,6 +173,15 @@ export async function updateGameData() {
   ]);
   console.log("Game source:", checksum);
   const mergedChecksum = createHash("sha512").update(merged).digest("hex");
+
+  if (lastGameChecksum && lastGameChecksum !== checksum) {
+    console.log("Game update detected, notifying Discord...");
+    notifyGameUpdate(checksum, src);
+  }
+  lastGameChecksum = checksum;
+  writeFile(lastGameChecksumPath, checksum, "utf-8").catch((err: any) =>
+    console.error("failed to persist game checksum:", err),
+  );
 
   scripts.game = {
     source: src,
@@ -171,7 +222,13 @@ export const sketchWatcher = watch(fileURLToPath(sketchPath));
 sketchWatcher.on("change", updateSketchData);
 updateSketchData();
 
-updateGameData();
+lastChecksumLoad.then(() => updateGameData());
+
+export const gameWatcher = watch([
+  fileURLToPath(gameSourceDebugPath),
+  fileURLToPath(gameManifest),
+]);
+gameWatcher.on("change", updateGameData);
 
 export const compatibleChecksumsWatcher = watch(
   fileURLToPath(compatibleChecksumsPath),

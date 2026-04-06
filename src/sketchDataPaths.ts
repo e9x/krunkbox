@@ -9,3 +9,4 @@ export const gameManifest = new URL("./game.manifest.json", binDir);
 export const userscriptName = "sketch.user.js";
 export const sketchPath = new URL(userscriptName, binDir);
 export const compatibleChecksumsPath = new URL("./compat.json", binDir);
+export const lastGameChecksumPath = new URL("./last_game_checksum.txt", binDir);
