@@ -6,12 +6,13 @@ import {
   gameManifest,
   gameSourceDeobPath,
 } from "./sketchDataPaths";
+import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
 import type { KruSource } from "~client/inject";
 import { discordWebhook } from "./env";
 
-function notifyDeobfuscationComplete(deobfuscated: string) {
+function notifyDeobfuscationComplete(deobfuscated: string, sourceChecksum: string) {
   const formData = new FormData();
 
   const payload = {
@@ -21,6 +22,7 @@ function notifyDeobfuscationComplete(deobfuscated: string) {
         title: "🛡️ Krunker Game Deobfuscated",
         color: 0x00ff00,
         fields: [
+          { name: "Source Checksum", value: `\`${sourceChecksum}\``, inline: false },
           { name: "Status", value: "Success", inline: true },
           { name: "Size", value: `${deobfuscated.length} bytes`, inline: true },
         ],
@@ -129,7 +131,8 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
   deobfuscated = deobfuscated.replaceAll(exp.token, myTokenArg);
 
   await writeFile(gameSourceDeobPath, deobfuscated);
-  notifyDeobfuscationComplete(deobfuscated);
+  const sourceChecksum = createHash("sha512").update(exp.source).digest("hex");
+  notifyDeobfuscationComplete(deobfuscated, sourceChecksum);
 
   console.time("Minify");
   let { code: minified } = await transform(deobfuscated, {

@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { discordWebhook } from "./env";
 
-function notifyGameUpdate(checksum: string, source: Buffer) {
+function notifyGameUpdate(checksum: string, previousChecksum: string, source: Buffer) {
   const formData = new FormData();
 
   const payload = {
@@ -22,7 +22,8 @@ function notifyGameUpdate(checksum: string, source: Buffer) {
         title: "\uD83C\uDFAE Krunker Game Update Detected",
         color: 0x5865f2,
         fields: [
-          { name: "Source Checksum", value: `\`${checksum}\``, inline: false },
+          { name: "Previous Checksum", value: `\`${previousChecksum}\``, inline: false },
+          { name: "New Checksum", value: `\`${checksum}\``, inline: false },
         ],
         timestamp: new Date().toISOString(),
       },
@@ -186,7 +187,7 @@ async function _updateGameDataImpl(notify: boolean) {
 
   if (notify && lastGameChecksum && lastGameChecksum !== checksum) {
     console.log("Game update detected, notifying Discord...");
-    notifyGameUpdate(checksum, src);
+    notifyGameUpdate(checksum, lastGameChecksum, src);
   }
   lastGameChecksum = checksum;
   writeFile(lastGameChecksumPath, checksum, "utf-8").catch((err: any) =>
