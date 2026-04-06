@@ -105,7 +105,7 @@ function sketchUpdated(supportedGame?: string) {
   if (
     (gameSourceChecksum !== supportedGame &&
       !(supportedGame in scripts.compat)) ||
-    !scripts.compat[supportedGame].includes(gameSourceChecksum)
+    !scripts.compat[supportedGame]?.includes(gameSourceChecksum)
   )
     return false;
 
