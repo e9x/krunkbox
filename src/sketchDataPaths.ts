@@ -11,3 +11,4 @@ export const sketchPath = new URL(userscriptName, binDir);
 export const compatibleChecksumsPath = new URL("./compat.json", binDir);
 export const lastGameChecksumPath = new URL("./last_game_checksum.txt", binDir);
 export const ccChecksumsPath = new URL("./cc_checksums.txt", binDir);
+export const ccDir = new URL("./cc/", binDir);

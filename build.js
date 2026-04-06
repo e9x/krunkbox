@@ -19,6 +19,10 @@ await build({
       in: "src/manifest.ts",
       out: "manifest",
     },
+    {
+      in: "src/ccDeobWorker.ts",
+      out: "ccDeobWorker",
+    },
   ],
   outdir: "dist/",
   format: "esm",

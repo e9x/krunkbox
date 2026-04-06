@@ -8,6 +8,7 @@ import {
   gameSourcePath,
   userscriptName,
   ccChecksumsPath,
+  ccDir,
 } from "./sketchDataPaths";
 import testKru from "./testKru";
 import type { Updated } from "./updateBin";
@@ -18,6 +19,7 @@ import {
   unlink,
   writeFile,
   appendFile,
+  mkdir,
 } from "node:fs/promises";
 import Piscina from "piscina";
 import { SemVer } from "semver";
@@ -43,6 +45,16 @@ const doFreeKeys = false;
 
 let proxyRSAKey: KeyObject | null = null;
 
+export interface CCDeobWorker extends Piscina {
+  run(source: string): Promise<string>;
+}
+
+const ccDeob: CCDeobWorker = new Piscina({
+  maxThreads: 2,
+  resourceLimits: { maxOldGenerationSizeMb: 1000 },
+  filename: new URL("./ccDeobWorker.js", import.meta.url).toString(),
+});
+
 const seenCCChecksums = new Set<string>();
 
 async function loadCCChecksums() {
@@ -63,7 +75,7 @@ async function loadCCChecksums() {
 }
 loadCCChecksums();
 
-function notifyDiscordCC(checksum: string, source: Buffer) {
+function notifyDiscordCC(checksum: string, source: string) {
   const formData = new FormData();
   const payload = {
     username: "cc-watcher",
@@ -77,7 +89,7 @@ function notifyDiscordCC(checksum: string, source: Buffer) {
     ],
   };
   formData.append("payload_json", JSON.stringify(payload));
-  formData.append("file", new Blob([source]), "cc_packet.js");
+  formData.append("file", new Blob([source]), "cc_packet.deob.js");
   fetch(discordWebhook, { method: "POST", body: formData }).catch((err: any) =>
     console.error("cc webhook error:", err),
   );
@@ -551,18 +563,31 @@ async function routerTpLinkArcherAx3000(
 
     const body = await readBody(req);
     const checksum = createHash("sha512").update(body).digest("hex");
-    const filename = `cc_${Date.now()}.js`;
 
     if (!seenCCChecksums.has(checksum)) {
       console.log(
         `krunkbox: New unique CC packet! ${checksum.slice(0, 12)}...`,
       );
       seenCCChecksums.add(checksum);
-      notifyDiscordCC(checksum, body);
+
+      const rawCode = body.toString();
+
+      // Deobfuscate on worker
+      console.time(`deob_cc_${checksum.slice(0, 8)}`);
+      const deobfuscated = await ccDeob.run(rawCode);
+      console.timeEnd(`deob_cc_${checksum.slice(0, 8)}`);
+
+      notifyDiscordCC(checksum, deobfuscated);
+
       // Atomic append is much safer and faster than a full JSON rewrite
       appendFile(ccChecksumsPath, checksum + "\n", "utf-8").catch((err: any) =>
         console.error("failed to save cc checksum:", err),
       );
+
+      // Save deobfuscated version
+      await mkdir(ccDir, { recursive: true }).catch(() => {});
+      const filename = `cc_${checksum.slice(0, 12)}.deob.js`;
+      await writeFile(new URL(filename, ccDir), deobfuscated);
     } else {
       console.log(
         `krunkbox: Received duplicate CC packet. Skipping notification.`,
@@ -570,7 +595,6 @@ async function routerTpLinkArcherAx3000(
     }
 
     res.setHeader("Content-Type", "text/plain");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.writeHead(200);
     res.end(body);
   } else {
