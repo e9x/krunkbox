@@ -7,7 +7,7 @@ export default async function deobfuscateCC(source: string) {
   try {
     const result = await webcrack(source, {
       deobfuscate: true,
-      mangle: () => true,
+      mangle: false,
       unminify: true,
       unpack: true,
       jsx: false,
@@ -19,6 +19,7 @@ export default async function deobfuscateCC(source: string) {
 
   const transformed = await transform(code, {
     minify: false,
+    minifyIdentifiers: true,
     format: "esm",
     legalComments: "none",
   });
