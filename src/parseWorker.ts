@@ -9,6 +9,34 @@ import {
 import { writeFile } from "node:fs/promises";
 import { webcrack } from "webcrack";
 import type { KruSource } from "~client/inject";
+import { discordWebhook } from "./env";
+
+function notifyDeobfuscationComplete(deobfuscated: string) {
+  const formData = new FormData();
+
+  const payload = {
+    username: "deob-watcher",
+    embeds: [
+      {
+        title: "🛡️ Krunker Game Deobfuscated",
+        color: 0x00ff00,
+        fields: [
+          { name: "Status", value: "Success", inline: true },
+          { name: "Size", value: `${deobfuscated.length} bytes`, inline: true },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  formData.append("payload_json", JSON.stringify(payload));
+  formData.append("file", new Blob([deobfuscated]), "game.deob.js");
+
+  fetch(discordWebhook, {
+    method: "POST",
+    body: formData,
+  }).catch((err: any) => console.error("deob webhook error:", err));
+}
 
 const myTokenArg = "WP_MMToken";
 
@@ -24,7 +52,7 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
     gameSourceDebugPath,
     `${Object.entries(exp.renamed)
       .map(([name, src]) => `window.${src}=${name}`)
-      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`
+      .join(";")};var ${exp.token}=${myTokenArg};${exp.source}`,
   );
 
   await writeFile(gameSkinsPath, exp.skins);
@@ -101,6 +129,7 @@ export default async function parseGame(exp: KruSource, saveManifest = true) {
   deobfuscated = deobfuscated.replaceAll(exp.token, myTokenArg);
 
   await writeFile(gameSourceDeobPath, deobfuscated);
+  notifyDeobfuscationComplete(deobfuscated);
 
   console.time("Minify");
   let { code: minified } = await transform(deobfuscated, {

@@ -4,6 +4,7 @@ import { wireguard } from "./mullvad";
 import fetch, { RequestInit, Response } from "node-fetch";
 import { readFile, writeFile } from "node:fs/promises";
 import { binDir } from "./kruPaths";
+import { proxy } from "./env";
 
 export const ua =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
@@ -25,7 +26,7 @@ export function getAgent(proxyServer: string) {
   return agent as undefined as any;
 }
 
-const PROXY_ENV = process.env["PROXY"];
+const PROXY_ENV = proxy;
 const proxyServers = PROXY_ENV
   ? PROXY_ENV.split(",").map((p: string) =>
       p.includes("://") ? p : `http://${p}`,

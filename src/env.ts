@@ -25,6 +25,11 @@ if (!workinkURL) throw new TypeError("INVALID WORKINK_URL");
 export const workinkAPI = process.env.WORKINK_API || "";
 if (!workinkAPI) throw new TypeError("Invalid WORKINK_API");
 
+export const discordWebhook = process.env.DISCORD_WEBHOOK || "";
+if (!discordWebhook) throw new TypeError("Invalid DISCORD_WEBHOOK");
+
+export const proxy = process.env.PROXY || "";
+
 /*
 export const dispatcher = socksProxy
   ? socksDispatcher({

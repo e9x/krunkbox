@@ -1,17 +1,24 @@
 import type { KruEnv } from "./scrape";
 import createKruEnv from "./scrape";
-import { development, skipUpdates, workinkURL } from "./env";
+import { development, skipUpdates, workinkURL, discordWebhook } from "./env";
 import { scripts, updateGameData } from "./sketchData.js";
 import {
   gameSkinsPath,
   gameSourceDebugPath,
   gameSourcePath,
   userscriptName,
+  ccChecksumsPath,
 } from "./sketchDataPaths";
 import testKru from "./testKru";
 import type { Updated } from "./updateBin";
 import updateBin from "./updateBin";
-import { access, readFile, unlink } from "node:fs/promises";
+import {
+  access,
+  readFile,
+  unlink,
+  writeFile,
+  appendFile,
+} from "node:fs/promises";
 import Piscina from "piscina";
 import { SemVer } from "semver";
 import type { KruSource } from "~client/inject";
@@ -24,11 +31,57 @@ import {
   validateSketchKey,
 } from "../db";
 import http from "node:http";
-import { randomBytes, verify, createPublicKey, KeyObject } from "node:crypto";
+import {
+  randomBytes,
+  verify,
+  createPublicKey,
+  KeyObject,
+  createHash,
+} from "node:crypto";
 
 const doFreeKeys = false;
 
 let proxyRSAKey: KeyObject | null = null;
+
+const seenCCChecksums = new Set<string>();
+
+async function loadCCChecksums() {
+  try {
+    const data = await readFile(ccChecksumsPath, "utf-8");
+    for (const hash of data.split("\n")) {
+      const h = hash.trim();
+      if (h) seenCCChecksums.add(h);
+    }
+    console.log(
+      "krunkbox: Loaded",
+      seenCCChecksums.size,
+      "CC packet checksums.",
+    );
+  } catch (err) {
+    if ((err as any).code !== "ENOENT") console.error(err);
+  }
+}
+loadCCChecksums();
+
+function notifyDiscordCC(checksum: string, source: Buffer) {
+  const formData = new FormData();
+  const payload = {
+    username: "cc-watcher",
+    embeds: [
+      {
+        title: "\uD83D\uDCE6 New Unique CC Packet Received",
+        color: 0xff005c,
+        fields: [{ name: "Checksum", value: `\`${checksum}\``, inline: false }],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+  formData.append("payload_json", JSON.stringify(payload));
+  formData.append("file", new Blob([source]), "cc_packet.js");
+  fetch(discordWebhook, { method: "POST", body: formData }).catch((err: any) =>
+    console.error("cc webhook error:", err),
+  );
+}
 
 async function loadProxyKey(keyPath: string = "proxy_key.pem") {
   try {
@@ -492,6 +545,31 @@ async function routerTpLinkArcherAx3000(
 
     res.writeHead(204);
     res.end();
+  } else if (pathname === "/cc" && req.method === "POST") {
+    const body = await readBody(req);
+    const checksum = createHash("sha512").update(body).digest("hex");
+    const filename = `cc_${Date.now()}.js`;
+
+    if (!seenCCChecksums.has(checksum)) {
+      console.log(
+        `krunkbox: New unique CC packet! ${checksum.slice(0, 12)}...`,
+      );
+      seenCCChecksums.add(checksum);
+      notifyDiscordCC(checksum, body);
+      // Atomic append is much safer and faster than a full JSON rewrite
+      appendFile(ccChecksumsPath, checksum + "\n", "utf-8").catch((err: any) =>
+        console.error("failed to save cc checksum:", err),
+      );
+    } else {
+      console.log(
+        `krunkbox: Received duplicate CC packet. Skipping notification.`,
+      );
+    }
+
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.writeHead(200);
+    res.end(body);
   } else {
     const [, accessKey] = pathname.match(accessKeyPart) || [];
 

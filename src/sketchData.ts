@@ -11,8 +11,7 @@ import { createHash } from "node:crypto";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-const DISCORD_WEBHOOK =
-  "https://discord.com/api/webhooks/1490516704646791389/5AA_18XUUEWKYnyIGaWqnlG9lmGLA1rbgLcVymhK94wFrWzkG_7ldYpTwWopaRyc2YeZ";
+import { discordWebhook } from "./env";
 
 function notifyGameUpdate(checksum: string, source: Buffer) {
   const formData = new FormData();
@@ -34,7 +33,7 @@ function notifyGameUpdate(checksum: string, source: Buffer) {
   formData.append("payload_json", JSON.stringify(payload));
   formData.append("file", new Blob([source]), "game.debug.js");
 
-  fetch(DISCORD_WEBHOOK, {
+  fetch(discordWebhook, {
     method: "POST",
     body: formData,
   }).catch((err: any) => console.error("webhook error:", err));
