@@ -13,6 +13,8 @@ import type { KruSource } from "~client/inject";
 import { discordWebhook } from "./env";
 
 function notifyDeobfuscationComplete(deobfuscated: string, sourceChecksum: string) {
+  if (!discordWebhook) return;
+
   const formData = new FormData();
 
   const payload = {

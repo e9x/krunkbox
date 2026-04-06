@@ -13,6 +13,8 @@ import { fileURLToPath } from "node:url";
 import { discordWebhook } from "./env";
 
 function notifyGameUpdate(checksum: string, previousChecksum: string, source: Buffer) {
+  if (!discordWebhook) return;
+
   const formData = new FormData();
 
   const payload = {
