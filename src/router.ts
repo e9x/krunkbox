@@ -811,7 +811,8 @@ const parse: ParseWorker = new Piscina({
 
 async function parseGame(kruEnv: KruEnv) {
   await parse.run(await kruEnv.source());
-  await updateGameData();
+  // notify=true: files are fully written, safe to send webhook
+  await updateGameData(true);
 }
 
 let didTest = false;

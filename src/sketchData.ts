@@ -1,7 +1,6 @@
 import {
   compatibleChecksumsPath,
   gameManifest,
-  gameSkinsPath,
   gameSourceDebugPath,
   lastGameChecksumPath,
   sketchPath,
@@ -142,9 +141,18 @@ const lastChecksumLoad = readFile(lastGameChecksumPath, "utf-8")
     /* file doesn't exist yet, that's fine */
   });
 
-export async function updateGameData() {
-  delete scripts.game;
+// Serialize access to updateGameData so concurrent calls
+// don't race on lastGameChecksum and send duplicate webhooks.
+let gameUpdateLock: Promise<void> = Promise.resolve();
 
+export function updateGameData(notify = true) {
+  const next = gameUpdateLock.then(() => _updateGameDataImpl(notify));
+  // Always resolve the chain so a failure doesn't block future calls
+  gameUpdateLock = next.catch(() => {});
+  return next;
+}
+
+async function _updateGameDataImpl(notify: boolean) {
   let src: Buffer;
   try {
     src = await readFile(gameSourceDebugPath);
@@ -160,7 +168,10 @@ export async function updateGameData() {
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.error(err);
-      console.log(`game skins doesn't exist`);
+      console.log(`game manifest doesn't exist`);
+      return;
+    } else if (err instanceof SyntaxError) {
+      console.error("game manifest is invalid JSON");
       return;
     } else throw err;
   }
@@ -173,7 +184,7 @@ export async function updateGameData() {
   console.log("Game source:", checksum);
   const mergedChecksum = createHash("sha512").update(merged).digest("hex");
 
-  if (lastGameChecksum && lastGameChecksum !== checksum) {
+  if (notify && lastGameChecksum && lastGameChecksum !== checksum) {
     console.log("Game update detected, notifying Discord...");
     notifyGameUpdate(checksum, src);
   }
@@ -221,13 +232,11 @@ export const sketchWatcher = watch(fileURLToPath(sketchPath));
 sketchWatcher.on("change", updateSketchData);
 updateSketchData();
 
-lastChecksumLoad.then(() => updateGameData());
+lastChecksumLoad.then(() => updateGameData(false));
 
-export const gameWatcher = watch([
-  fileURLToPath(gameSourceDebugPath),
-  fileURLToPath(gameManifest),
-]);
-gameWatcher.on("change", updateGameData);
+// No watcher for game files — they're only written by parseWorker (same process),
+// and router.ts calls updateGameData(true) explicitly after the worker finishes.
+// Watching caused duplicate webhook spam from partial/concurrent reads.
 
 export const compatibleChecksumsWatcher = watch(
   fileURLToPath(compatibleChecksumsPath),
