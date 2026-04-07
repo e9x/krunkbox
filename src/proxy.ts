@@ -34,6 +34,7 @@ if (PROXY_ENV) {
   proxyServers = PROXY_ENV.split(",").map((p: string) =>
     p.includes("://") ? p : `http://${p}`,
   );
+  console.log("Using", proxyServers.length, "proxies from env");
 } else {
   const wireguard = await getWireguard();
   proxyServers = wireguard.filter((s) => s.active).map((s) => s.toString());
@@ -49,6 +50,9 @@ try {
 } catch (err) {
   if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
 }
+
+if (bannedProxies.length)
+  console.log("Banned", bannedProxies.length, "proxies");
 
 for (const server of bannedProxies) {
   let pi = proxyServers.indexOf(server);
@@ -67,6 +71,7 @@ async function setBanned(server: string) {
 class Proxy {
   server!: string;
   agent!: any;
+  auth?: { username: string; password: string };
   next() {
     let proxyServer = proxyServers[~~(Math.random() * proxyServers.length)];
 
@@ -74,10 +79,15 @@ class Proxy {
     // console.log(proxyServer)
     this.server = proxyServer;
     this.agent = getAgent(proxyServer);
+    const url = new URL(proxyServer);
+    this.auth = url.username
+      ? { username: decodeURIComponent(url.username), password: decodeURIComponent(url.password) }
+      : undefined;
   }
   constructor() {
     this.fetch = this.fetch.bind(this);
     this.next();
+    console.log("Selected proxy:", this.server, this.auth ? "(auth)" : "");
   }
   async fetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
     url = new URL(url);
@@ -97,6 +107,7 @@ class Proxy {
         res.headers.get("content-type") == "text/html; charset=UTF-8"
       ) {
         // console.log("Proxy is IP banned, finding new one", res.status, this.server);
+        console.log("Proxy banned, rotating:", this.server);
         setBanned(this.server);
         this.next();
         continue;

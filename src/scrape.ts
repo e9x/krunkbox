@@ -25,6 +25,10 @@ export default async function createKruEnv() {
   // use new tab
   const [page] = await browser.pages();
 
+  if (proxy.auth) {
+    await page.authenticate(proxy.auth);
+  }
+
   page.setRequestInterception(true);
 
   const { fetch } = proxy;
