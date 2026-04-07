@@ -34,10 +34,16 @@ function parseSocks(proxy: string): MullvadServer {
   );
 }
 
-export const wireguard: MullvadServer[] = (await fetch(
-  "https://api.mullvad.net/www/relays/wireguard/",
-)
-  .then((res) => res.json())
-  .then((m) =>
-    (m as any[]).map((s) => Object.setPrototypeOf(s, MullvadServer.prototype)),
-  )) as any;
+let _wireguard: MullvadServer[] | undefined;
+
+export async function getWireguard(): Promise<MullvadServer[]> {
+  if (_wireguard) return _wireguard;
+  _wireguard = (await fetch(
+    "https://api.mullvad.net/www/relays/wireguard/",
+  )
+    .then((res) => res.json())
+    .then((m) =>
+      (m as any[]).map((s) => Object.setPrototypeOf(s, MullvadServer.prototype)),
+    )) as any;
+  return _wireguard!;
+}

@@ -1,6 +1,6 @@
 import { SocksProxyAgent } from "socks-proxy-agent";
 import { HttpsProxyAgent } from "https-proxy-agent";
-import { wireguard } from "./mullvad";
+import { getWireguard } from "./mullvad";
 import fetch, { RequestInit, Response } from "node-fetch";
 import { readFile, writeFile } from "node:fs/promises";
 import { binDir } from "./kruPaths";
@@ -27,13 +27,18 @@ export function getAgent(proxyServer: string) {
 }
 
 const PROXY_ENV = proxy;
-const proxyServers = PROXY_ENV
-  ? PROXY_ENV.split(",").map((p: string) =>
-      p.includes("://") ? p : `http://${p}`,
-    )
-  : wireguard.filter((s: any) => s.active).map((s: any) => s.toString());
 
-console.log("Loaded", wireguard.length, "Mullvad servers");
+let proxyServers: string[];
+
+if (PROXY_ENV) {
+  proxyServers = PROXY_ENV.split(",").map((p: string) =>
+    p.includes("://") ? p : `http://${p}`,
+  );
+} else {
+  const wireguard = await getWireguard();
+  proxyServers = wireguard.filter((s) => s.active).map((s) => s.toString());
+  console.log("Loaded", wireguard.length, "Mullvad servers");
+}
 
 const bannedProxiesPath = new URL("./banned-proxies.json", binDir);
 

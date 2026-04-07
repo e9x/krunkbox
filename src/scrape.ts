@@ -3,9 +3,9 @@ import { readFile } from "node:fs/promises";
 import puppeteer, { type Browser, HandleFor } from "puppeteer";
 import type { KruSource } from "~client/inject";
 import { pickProxy } from "./proxy";
-import { wireguard } from "./mullvad";
 
 export default async function createKruEnv() {
+  const proxy = await pickProxy();
 
   let browser: Browser | undefined = await puppeteer.launch({
     headless: headlessBrowser,
@@ -17,7 +17,7 @@ export default async function createKruEnv() {
       // "--blink-settings=imagesEnabled=false",
       // "--mute-audio",
       // "--disable-gpu",
-      "--proxy-server=socks5://" + wireguard[0].socks_name + ":" + wireguard[0].socks_port,
+      "--proxy-server=" + proxy.server,
     ],
     protocolTimeout: 10000e3,
   });
@@ -27,7 +27,7 @@ export default async function createKruEnv() {
 
   page.setRequestInterception(true);
 
-  const { fetch } = await pickProxy();
+  const { fetch } = proxy;
 
   page.on("request", async (req) => {
     const url = new URL(req.url());
