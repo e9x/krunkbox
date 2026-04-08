@@ -49,7 +49,13 @@ export default async function createKruEnv() {
 
     // 91.107.140.0
     // if(url.hostname.includes("gapi.svc"))console.log({...req.headers()});
-    const res = await fetch(url, { headers: req.headers() });
+    let res;
+    try {
+      res = await fetch(url, { headers: req.headers() });
+    } catch {
+      req.abort().catch(() => {});
+      return;
+    }
     const h = Object.fromEntries(res.headers);
     // console.log("got res", url, h);
     const fake = {
