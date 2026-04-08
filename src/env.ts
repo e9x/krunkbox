@@ -29,6 +29,8 @@ export const discordWebhook = process.env.DISCORD_WEBHOOK || "";
 if (!discordWebhook)
   throw new TypeError("DISCORD_WEBHOOK is required");
 
+export const proxyWebhook = process.env.PROXY_WEBHOOK || "";
+
 export const silenceGameWebhooks = process.env.SILENCE_GAME_WEBHOOKS === "1";
 
 export const proxy = process.env.PROXY || "";

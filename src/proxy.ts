@@ -4,7 +4,7 @@ import { getWireguard } from "./mullvad";
 import fetch, { RequestInit, Response } from "node-fetch";
 import { readFile, writeFile } from "node:fs/promises";
 import { binDir } from "./kruPaths";
-import { proxy } from "./env";
+import { proxy, proxyWebhook } from "./env";
 
 export const ua =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
@@ -91,15 +91,24 @@ class Proxy {
   }
   async fetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
     url = new URL(url);
-    while (true) {
-      const res = await fetch(url, {
-        ...init,
-        headers: {
-          ...(init.headers || {}),
-          "User-Agent": ua,
-        },
-        agent: this.agent,
-      });
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          ...init,
+          headers: {
+            ...(init.headers || {}),
+            "User-Agent": ua,
+          },
+          agent: this.agent,
+        });
+      } catch (err) {
+        lastErr = err;
+        console.error(`Proxy fetch failed (attempt ${attempt + 1}/3):`, this.server, String(err));
+        this.next();
+        continue;
+      }
 
       if (
         res.status === 403 &&
@@ -116,9 +125,37 @@ class Proxy {
 
       return res;
     }
+
+    notifyProxyFailure(String(url), String(lastErr));
+    throw lastErr;
   }
 }
 
 export async function pickProxy() {
   return new Proxy();
+}
+
+function notifyProxyFailure(url: string, error: string) {
+  if (!proxyWebhook) return;
+
+  const payload = {
+    username: "proxy-watcher",
+    embeds: [
+      {
+        title: "Proxy Failure",
+        color: 0xff0000,
+        fields: [
+          { name: "URL", value: url, inline: false },
+          { name: "Error", value: error.slice(0, 1024), inline: false },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  fetch(proxyWebhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch((err) => console.error("Proxy webhook error:", err));
 }
