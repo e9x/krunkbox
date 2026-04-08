@@ -44,16 +44,7 @@ function notifyGameUpdate(checksum: string, previousChecksum: string, source: Bu
 // Use memory as a cache layer
 // Save both the gameSource and sketchScript in memory as soon as they're accessible
 
-interface CompatibleChecksums {
-  /**
-   * Key is the checksum used in Sketch (SKETCH_SUPPORTED_GAME)
-   * Value is an array of checksums that are compatible with the checksum described in the key.
-   * The checksums are newer/older versions of the game
-   *
-   * If you can support X, then you can support one of Y
-   */
-  [oldSourceChecksum: string]: string[];
-}
+type CompatibleChecksums = Set<string>;
 
 export const scripts: {
   sketch?: {
@@ -207,27 +198,20 @@ async function _updateGameDataImpl(notify: boolean) {
 async function updateCompatibleChecksums() {
   delete scripts.compat;
 
-  let compat: CompatibleChecksums;
-
   try {
     const data = await readFile(compatibleChecksumsPath, "utf-8");
-    compat = JSON.parse(data) as CompatibleChecksums;
+    const lines = data.split("\n").map((l) => l.trim()).filter(Boolean);
+    const compat: CompatibleChecksums = new Set(lines);
+    console.log("CHECKSUMS:", [...compat]);
+    scripts.compat = compat;
   } catch (err) {
-    if (err instanceof SyntaxError) {
-      console.error("Compat table contained invalid JSON 😨");
-      console.error(err);
-      return;
-    } else if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      console.error(err);
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       console.log(
         `Cannot read ${compatibleChecksumsPath}. Version information won't be shown`,
       );
       return;
     } else throw err;
   }
-
-  console.log("CHECKSUMS:", compat);
-  scripts.compat = compat;
 }
 
 // export so we can ending the watcher

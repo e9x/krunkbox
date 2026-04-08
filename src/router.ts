@@ -236,9 +236,7 @@ function sketchUpdated(supportedGame?: string) {
 
   if (scripts.game.checksum === supportedGame) return true;
 
-  const xn = scripts.compat[supportedGame];
-
-  if (!xn || !xn.includes(scripts.game.checksum)) return false;
+  if (!scripts.compat.has(supportedGame)) return false;
 
   return true;
 }
