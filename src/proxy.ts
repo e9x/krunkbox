@@ -29,11 +29,13 @@ export function getAgent(proxyServer: string) {
 const PROXY_ENV = proxy;
 
 let proxyServers: string[];
+let fallbackProxies: string[] = [];
 
 if (PROXY_ENV) {
   proxyServers = PROXY_ENV.split(",").map((p: string) =>
     p.includes("://") ? p : `http://${p}`,
   );
+  fallbackProxies = [...proxyServers];
   console.log("Using", proxyServers.length, "proxies from env");
 } else {
   const wireguard = await getWireguard();
@@ -60,6 +62,8 @@ for (const server of bannedProxies) {
 }
 
 async function setBanned(server: string) {
+  if (fallbackProxies.includes(server)) return; // don't ban fallback proxies
+
   if (!bannedProxies.includes(server)) bannedProxies.push(server);
 
   let pi = proxyServers.indexOf(server);
@@ -73,7 +77,11 @@ class Proxy {
   agent!: any;
   auth?: { username: string; password: string };
   next() {
-    let proxyServer = proxyServers[~~(Math.random() * proxyServers.length)];
+    let availableProxies = proxyServers.length > 0 ? proxyServers : fallbackProxies;
+    if (availableProxies.length === 0) {
+      throw new Error("No proxies available");
+    }
+    let proxyServer = availableProxies[~~(Math.random() * availableProxies.length)];
 
     // let proxy = proxyServers[~~(Math.random() * PROXY.length)]
     // console.log(proxyServer)
