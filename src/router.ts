@@ -651,23 +651,26 @@ async function routerTpLinkArcherAx3000(
         );
       }
 
-      if (!comparison || comparison.similarity < 0.99) {
-        notifyDiscordCC(checksum, rawCode, deobfuscated, comparison);
-      } else {
-        console.log(
-          `krunkbox: CC similarity ${(comparison.similarity * 100).toFixed(1)}% >= 99%, skipping webhook.`,
-        );
-      }
-
       // Atomic append is much safer and faster than a full JSON rewrite
       appendFile(ccChecksumsPath, checksum + "\n", "utf-8").catch((err: any) =>
         console.error("failed to save cc checksum:", err),
       );
 
-      // Save deobfuscated version
       await mkdir(ccDir, { recursive: true }).catch(() => {});
-      const filename = `cc_${checksum.slice(0, 12)}.deob.js`;
-      await writeFile(new URL(filename, ccDir), deobfuscated);
+
+      if (!comparison || comparison.similarity < 0.99) {
+        notifyDiscordCC(checksum, rawCode, deobfuscated, comparison);
+        // Save deobfuscated version for unique CCs
+        const filename = `cc_${checksum.slice(0, 12)}.deob.js`;
+        await writeFile(new URL(filename, ccDir), deobfuscated);
+      } else {
+        console.log(
+          `krunkbox: CC similarity ${(comparison.similarity * 100).toFixed(1)}% >= 99%, skipping webhook.`,
+        );
+        // Save raw version for non-unique CCs
+        const filename = `cc_${checksum.slice(0, 12)}.raw.js`;
+        await writeFile(new URL(filename, ccDir), rawCode);
+      }
     } else {
       console.log(
         `krunkbox: Received duplicate CC packet. Skipping notification.`,
