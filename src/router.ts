@@ -805,7 +805,7 @@ interface SketchVersion {
   updateURL: string;
 }
 
-const alwaysUpToDate = false;
+const alwaysUpToDate = true;
 
 export interface ParseWorker extends Piscina {
   run(task: KruSource): Promise<void>;
