@@ -168,7 +168,7 @@ export function hookContext(
     },
   }.toString;
 
-  mirrorAttributes(toString, hookedToString);
+  mirrorAttributes(hookedToString, toString);
 
   context.Function.prototype.toString =
     hookedToString as typeof Function.prototype.toString;
