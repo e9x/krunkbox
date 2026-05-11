@@ -658,14 +658,14 @@ async function routerTpLinkArcherAx3000(
 
       await mkdir(ccDir, { recursive: true }).catch(() => {});
 
-      if (!comparison || comparison.similarity < 0.99) {
+      if (!comparison || comparison.breakdown.nodeTypeDistribution < 1) {
         notifyDiscordCC(checksum, rawCode, deobfuscated, comparison);
         // Save deobfuscated version for unique CCs
         const filename = `cc_${checksum.slice(0, 12)}.deob.js`;
         await writeFile(new URL(filename, ccDir), deobfuscated);
       } else {
         console.log(
-          `krunkbox: CC similarity ${(comparison.similarity * 100).toFixed(1)}% >= 99%, skipping webhook.`,
+          `krunkbox: CC node type distribution ${(comparison.breakdown.nodeTypeDistribution * 100).toFixed(1)}% == 100%, skipping webhook.`,
         );
         // Save raw version for non-unique CCs
         const filename = `cc_${checksum.slice(0, 12)}.raw.js`;
