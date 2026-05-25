@@ -306,44 +306,44 @@ async function routerTpLinkArcherAx3000(
         });
       }
     } else {
-      if (development && code === "x3") {
-        const init = Date.now();
-        key = {
-          code: crypto.randomUUID(),
-          reason: "developer key",
-          init,
-          born: init,
-          duration: null,
-          type: sketch_key_type.unlimited,
-          uses: 0,
-        };
-        console.log("developer key:", key);
-        insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
-      } else if (await validWorkInkToken(code)) {
-        if (!doFreeKeys) {
-          console.error("tried to validate workink LOL", code);
-          return sendJSON(res, 200, {
-            success: false,
-            error: ["sketch_key_validate.invalid"],
-          });
-        }
-        // insert into the database
-        const init = Date.now();
-        key = {
-          code,
-          reason: "work.ink key",
-          init,
-          born: init,
-          duration: null,
-          type: sketch_key_type.free,
-          uses: 0,
-        };
-        insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
-      } else
-        return sendJSON(res, 200, {
-          success: false,
-          error: ["sketch_key_validate.invalid"],
-        });
+      // if (development && code === "x3") {
+      const init = Date.now();
+      key = {
+        code: crypto.randomUUID(),
+        reason: "developer key",
+        init,
+        born: init,
+        duration: null,
+        type: sketch_key_type.unlimited,
+        uses: 0,
+      };
+      console.log("developer key:", key);
+      insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
+      // } else if (await validWorkInkToken(code)) {
+      //   if (!doFreeKeys) {
+      //     console.error("tried to validate workink LOL", code);
+      //     return sendJSON(res, 200, {
+      //       success: false,
+      //       error: ["sketch_key_validate.invalid"],
+      //     });
+      //   }
+      //   // insert into the database
+      //   const init = Date.now();
+      //   key = {
+      //     code,
+      //     reason: "work.ink key",
+      //     init,
+      //     born: init,
+      //     duration: null,
+      //     type: sketch_key_type.free,
+      //     uses: 0,
+      //   };
+      //   insertSketchKey.run(key.code, key.reason, key.init, key.born, key.type);
+      // } else
+      //   return sendJSON(res, 200, {
+      //     success: false,
+      //     error: ["sketch_key_validate.invalid"],
+      //   });
     }
 
     const token: api_token = {
